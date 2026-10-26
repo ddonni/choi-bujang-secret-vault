@@ -107,6 +107,20 @@
 - `POST /api/notes`에 남의 메모 `id`를 넣으면 `409 NOTE_ID_TAKEN`이 나옵니다. 내용은 보이지 않지만, 그 `id`가 있다는 사실은 알 수 있습니다.
 - 옛 커밋 `89a0dfc`과 옛 배포의 과거 노출은 그대로입니다.
 
+## 5단계: 자료 요청을 서버 한곳으로 모읍니다
+
+- 브라우저 코드(`public/index.html`)는 메모 자료를 Supabase에서 직접 읽거나 고치지 않습니다. 5단계에서 찾아본 결과, `supabase.from`·`/rest/v1` 같은 직접 자료 호출은 없었고 모든 자료 요청은 서버 함수 `/api/notes`, `/api/notes/:id`로 갑니다. 화면의 Supabase 호출은 로그인(`supabase.auth`)뿐입니다.
+- 서버 함수의 로그인 검사(`src/verify-login.mjs`), 소유자 검사(`owner_id`), 서버 전용 설정(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`)은 4단계 그대로입니다.
+- 원본 자료 API는 `aleph.config.json`의 `originalApiUrl`(`https://xvttauolkmecdscuthnb.supabase.co/rest/v1/notes`, 쿼리 없음)입니다. 심판은 anon 키로 이 주소에 직접 요청해 확인합니다.
+- 학습 DB 준비(학생이 SQL Editor에서 검토 후 실행): `public.notes`의 `PUBLIC`·`anon`·`authenticated` 테이블·칸 권한을 모두 회수하는 SQL을 제안했습니다. RLS와 4단계 정책은 남겨 두고, 서버 함수가 쓰는 `service_role`과 다른 테이블은 건드리지 않습니다. 적용 전후 `information_schema.role_table_grants`, `has_table_privilege`, `information_schema.column_privileges`로 대조합니다. SQL 적용 여부는 코딩 도구가 확인하지 못했습니다.
+- 5단계 저장점의 자기 점검에서 anon 키로 원본 API에 직접 보낸 GET·POST의 실제 결과는 `npm run bundle` 결과에 기록됩니다. 화면에 이미 공개된 publishable key를 `public/index.html`에서 읽어 쓰며, 서버 전용 키는 쓰지 않습니다.
+- 다시 실행하기: 4단계까지 준비한 뒤 위 권한 회수 SQL을 실행하고, A로 로그인해 추가·수정·삭제가 그대로 되는지 화면에서 확인합니다.
+
+### 5단계 남은 약점
+
+- 실제 A 계정의 추가·수정·삭제와 A·B 교차 요청은 자동 점검에서 보내지 않습니다. 화면에서 직접 확인합니다.
+- Supabase Auth의 공개 가입, `POST`의 남의 `id`에 대한 `409` 응답, 옛 커밋 `89a0dfc`의 과거 노출은 4단계와 같이 남아 있습니다.
+
 ## 다음 단계의 코딩 도구에 전달할 규칙
 
 [AGENTS.md](AGENTS.md)를 먼저 읽히고 한 번에 한 제작 단위만 요청하세요. 3단계 이후의 로그인, 허용 경로, 5단계의 원본 API 주소, 6단계 이후 정책 규칙은 해당 단계 원고와 계약에 맞춰 추가합니다. 비밀번호·토큰·서버 전용 키·실제 학생 기록을 코드, Git, 제출 묶음에 넣지 않습니다.
