@@ -12,11 +12,11 @@
 
 ## 시작 틀의 자동 처리
 
-`vercel.json`은 정적 결과물 `public`과 `api` 폴더의 서버 함수를 배포합니다. 빌드 명령 `npm run build`는 `aleph.config.json`의 `step`(1~12)을 확인하고, Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증해 `public/aleph.json`을 생성합니다. 2단계부터 빌드는 `public/data.json`을 만들지 않습니다. 이 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.
+`vercel.json`은 정적 결과물 `public`과 `api` 폴더의 서버 함수를 배포하고, 2단계부터 모든 응답에 보안 헤더 `X-Content-Type-Options: nosniff`를 붙입니다. 빌드 명령 `npm run build`는 `aleph.config.json`의 `step`(1~12)을 확인하고, Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증해 `public/aleph.json`을 생성합니다. 2단계부터 빌드는 `public/data.json`을 만들지 않습니다. 이 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.
 
-`aleph.config.json`의 `repoUrl`과 `publicAppUrl`은 이전 제출 묶음 방식의 자리표시자입니다. 1단계에서는 학생이 편집하지 않습니다. 2단계 이후 코딩 도구가 필요한 설정과 보호 기능을 단계별로 작성합니다. `npm run bundle`과 `bundle-notes.json`도 1단계의 세 걸음에는 포함되지 않습니다.
+`aleph.config.json`의 `repoUrl`과 `publicAppUrl`은 1단계에서 자리표시자였고 학생이 편집하지 않습니다. 2단계 저장점부터 실제 GitHub 저장소와 Vercel Production 주소가 들어 있습니다. 2단계 이후 코딩 도구가 필요한 설정과 보호 기능을 단계별로 작성합니다. `npm run bundle`과 `bundle-notes.json`도 1단계의 세 걸음에는 포함되지 않습니다.
 
-로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 저장소의 `src/attack-check.mjs`는 실제 배포가 된 뒤 `/data.json`을 비로그인으로 요청해 공개 가상 메모의 확인 표시를 읽습니다.
+로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 저장소의 `src/attack-check.mjs`는 실제 배포 주소에 비로그인 요청을 보냅니다. 1단계에서는 `/data.json`의 공개 가상 메모 확인 표시를 읽었고, 2단계부터는 `/data.json`과 `/api/notes`에서 보이는 가상 메모 수를 셉니다.
 
 ## 2단계: 자료를 코드 밖으로 옮깁니다
 
@@ -59,8 +59,8 @@
 
 | 항목 | 결과 | 확인한 사람·날짜 |
 | --- | --- | --- |
-| GitHub 최신 파일(`origin/main` = `d000bbd`) | 0건 | 코딩 도구가 로컬에서 `git grep` 실행, 2026-10-26 |
-| 현재 배포 `/`, `/data.json`, `/aleph.json` | `/` 200·0건, `/data.json` 404·0건, `/aleph.json` 200·0건 (`step` 2, 커밋 `d000bbd`) | 코딩 도구가 Production 주소에 비로그인 요청, 2026-10-26 |
+| GitHub 최신 파일(`origin/main` = `8d3a0b1`) | 0건 | 코딩 도구가 로컬에서 `git grep` 실행, 2026-10-26 |
+| 현재 배포 `/`, `/data.json`, `/aleph.json` | `/` 200·0건(`X-Content-Type-Options: nosniff`), `/data.json` 404·0건, `/aleph.json` 200·0건 (`step` 2, 커밋 `8d3a0b1`) | 코딩 도구가 Production 주소에 비로그인 요청, 2026-10-26 |
 | 공개 API `/api/notes` 약점 | 200·**4건**: 로그인 없이 메모 네 건을 받을 수 있음 (남은 약점) | 코딩 도구가 Production 주소에 비로그인 요청, 2026-10-26 |
 
 **과거 노출은 해소되지 않았습니다.** 첫 공개 커밋 `89a0dfc`의 `data.json`과 `public/data.json`에는 메모 네 건이 그대로 남아 있습니다. GitHub에서 이 커밋을 누구나 열 수 있습니다. 그 커밋으로 만든 옛 Vercel 배포도 남아 있다면 `/data.json`에서 메모가 보일 수 있습니다. 최신 파일 검색 결과가 0건이라는 것은 "지금 파일에 없다"는 뜻일 뿐, 이미 공개됐던 기록이 지워졌다는 뜻이 아닙니다.

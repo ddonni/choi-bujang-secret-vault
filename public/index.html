@@ -16,14 +16,39 @@
     li { border: 1px solid #51667c; border-radius: 14px; padding: 17px 19px; background: #1a2a3d; }
     strong { display: block; font-size: 18px; margin-bottom: 5px; }
     li span { color: #bfd0e5; }
+    .auth { margin: 26px 0; padding: 18px; border: 1px solid #51667c; border-radius: 14px; background: #1a2a3d; }
+    .auth h2 { margin: 0 0 12px; font-size: 18px; }
+    .auth form { display: grid; gap: 10px; }
+    .auth label { display: grid; gap: 4px; font-size: 15px; color: #bfd0e5; }
+    .auth input { padding: 10px 12px; border: 1px solid #51667c; border-radius: 10px; background: #101a28; color: #ecf4ff; font-size: 16px; }
+    .auth button { justify-self: start; padding: 10px 18px; border: 0; border-radius: 10px; background: #8ad8df; color: #101a28; font-size: 16px; font-weight: 700; cursor: pointer; }
+    .auth button:disabled { opacity: .6; cursor: wait; }
+    .auth .error { margin: 10px 0 0; color: #ffb3c0; }
+    .auth .signed-in { margin: 0 0 12px; color: #c9f2d6; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <main>
-    <div class="eyebrow">BYTE BACK · 2단계 자료를 코드 밖으로</div>
+    <div class="eyebrow">BYTE BACK · 3단계 진짜 로그인</div>
     <h1>점령된 자료실</h1>
     <p>자료는 이제 코드가 아닌 데이터베이스에 있고, 서버 함수를 거쳐 읽습니다. 아래 기록은 모두 실습을 위해 만든 가상 자료입니다.</p>
     <div class="notice">아직 로그인 확인이 없어 서버 함수 주소를 아는 방문자는 자료를 볼 수 있습니다. 다음 제작 단계에서 접근을 막아 주세요.</div>
+
+    <section class="auth" aria-labelledby="auth-title">
+      <h2 id="auth-title">로그인</h2>
+      <form id="login-form" hidden>
+        <label>이메일 <input id="email" type="email" autocomplete="username" required></label>
+        <label>비밀번호 <input id="password" type="password" autocomplete="current-password" required></label>
+        <button id="login-button" type="submit">로그인</button>
+      </form>
+      <div id="signed-in" hidden>
+        <p class="signed-in" id="signed-in-text"></p>
+        <button id="logout-button" type="button">로그아웃</button>
+      </div>
+      <p class="error" id="auth-error" role="alert" hidden></p>
+    </section>
+
     <ul id="notes" aria-live="polite"><li>가상 자료를 불러오는 중입니다.</li></ul>
   </main>
   <script type="module">
@@ -46,6 +71,71 @@
       const item = document.createElement('li');
       item.textContent = error.message;
       list.replaceChildren(item);
+    }
+  </script>
+  <script type="module">
+    // 3단계: Supabase Auth 이메일·비밀번호 로그인. 아래 두 값은 공개용입니다.
+    // 서버 전용 secret key는 여기에 넣지 마세요.
+    const SUPABASE_URL = 'https://xvttauolkmecdscuthnb.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_kd_fyakyQIMSpZRt9jV40g_StdLWQgy';
+
+    const form = document.querySelector('#login-form');
+    const signedIn = document.querySelector('#signed-in');
+    const signedInText = document.querySelector('#signed-in-text');
+    const errorText = document.querySelector('#auth-error');
+    const loginButton = document.querySelector('#login-button');
+    const logoutButton = document.querySelector('#logout-button');
+    const password = document.querySelector('#password');
+
+    const showError = message => {
+      errorText.textContent = message;
+      errorText.hidden = !message;
+    };
+    const reasons = {
+      invalid_credentials: '이메일 또는 비밀번호가 맞지 않습니다.',
+      email_not_confirmed: '이메일 인증이 아직 끝나지 않았습니다. 받은 편지함의 인증 메일을 확인하세요.',
+      over_request_rate_limit: '로그인 시도가 너무 많습니다. 잠시 뒤 다시 시도하세요.',
+      user_banned: '사용이 정지된 계정입니다.',
+    };
+    const reasonOf = error => reasons[error.code] ?? `로그인에 실패했습니다: ${error.message}`;
+
+    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+      showError('로그인 설정이 아직 없습니다. Project URL과 publishable key를 넣어 주세요.');
+    } else {
+      const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm');
+      const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+      const render = session => {
+        const user = session?.user;
+        form.hidden = Boolean(user);
+        signedIn.hidden = !user;
+        signedInText.textContent = user ? `${user.email} 계정으로 로그인되어 있습니다.` : '';
+      };
+
+      supabase.auth.onAuthStateChange((_event, session) => render(session));
+      const { data } = await supabase.auth.getSession();
+      render(data.session);
+
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        showError('');
+        loginButton.disabled = true;
+        const { error } = await supabase.auth.signInWithPassword({
+          email: document.querySelector('#email').value.trim(),
+          password: password.value,
+        });
+        password.value = '';
+        loginButton.disabled = false;
+        if (error) showError(reasonOf(error));
+      });
+
+      logoutButton.addEventListener('click', async () => {
+        showError('');
+        logoutButton.disabled = true;
+        const { error } = await supabase.auth.signOut();
+        logoutButton.disabled = false;
+        if (error) showError(`로그아웃에 실패했습니다: ${error.message}`);
+      });
     }
   </script>
 </body>
