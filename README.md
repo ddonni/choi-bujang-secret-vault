@@ -67,7 +67,7 @@
 
 ## 3단계: 진짜 로그인을 붙입니다
 
-- `/` 화면은 Supabase Auth 이메일·비밀번호 로그인·로그아웃을 공식 SDK(`@supabase/supabase-js`의 `signInWithPassword`·`signOut`)로 처리합니다. 화면 코드에는 공개용 Project URL과 publishable key만 들어 있습니다. 로그인에 실패하면 이유를 화면에 보여 줍니다.
+- `/` 화면은 Supabase Auth 이메일·비밀번호 로그인·로그아웃을 공식 SDK(`@supabase/supabase-js`의 `signInWithPassword`·`signOut`)로 처리했습니다. 3단계 당시 화면 코드에는 공개용 Project URL과 publishable key만 들어 있었고, 5단계에서 로그인을 서버 함수로 옮기며 화면에서 지웠습니다. 로그인에 실패하면 이유를 화면에 보여 줍니다.
 - 자료 API는 시작 틀의 `src/verify-login.mjs`로 `Authorization: Bearer` 토큰을 검사합니다. 토큰이 없거나 검사에 실패하면 자료 없이 `401 LOGIN_REQUIRED`를 돌려줍니다. 브라우저가 보낸 `userId`·`role`·`owner_id`는 읽지 않습니다. 검사에 쓴 발급자 정보는 `aleph.config.json`의 `identityProvider`에 있습니다.
 - 로그인한 사용자는 화면에서 가상 메모를 추가·수정·삭제합니다. 경로는 `aleph.config.json`의 `allowedRoutes`와 같습니다.
 
@@ -109,17 +109,26 @@
 
 ## 5단계: 자료 요청을 서버 한곳으로 모읍니다
 
-- 브라우저 코드(`public/index.html`)는 메모 자료를 Supabase에서 직접 읽거나 고치지 않습니다. 5단계에서 찾아본 결과, `supabase.from`·`/rest/v1` 같은 직접 자료 호출은 없었고 모든 자료 요청은 서버 함수 `/api/notes`, `/api/notes/:id`로 갑니다. 화면의 Supabase 호출은 로그인(`supabase.auth`)뿐입니다.
-- 서버 함수의 로그인 검사(`src/verify-login.mjs`), 소유자 검사(`owner_id`), 서버 전용 설정(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`)은 4단계 그대로입니다.
+- 브라우저 코드(`public/index.html`)는 메모 자료를 Supabase에서 직접 읽거나 고치지 않습니다. 5단계에서 찾아본 결과, `supabase.from`·`/rest/v1` 같은 직접 자료 호출은 없었고 모든 자료 요청은 서버 함수 `/api/notes`, `/api/notes/:id`로 갑니다. 당시 화면의 Supabase 호출은 로그인(`supabase.auth`)뿐이었습니다.
+- 로그인도 서버 함수로 옮겼습니다. 이제 화면 코드에는 Supabase SDK도, Project URL도, publishable key도 없습니다(배포된 `/`에서 `sb_publishable_` 0건).
+  - `POST /api/auth/login`: 서버가 공식 SDK의 `signInWithPassword`를 부릅니다. 받은 토큰은 응답 본문에 넣지 않고 `HttpOnly; Secure; SameSite=Strict` 쿠키(`vault_access`, `vault_refresh`)로만 보냅니다. 실패하면 `INVALID_CREDENTIALS` 같은 이유를 JSON으로 돌려줍니다.
+  - `GET /api/auth/session`: 쿠키의 토큰을 Supabase Auth로 확인해 이메일만 돌려줍니다. 만료됐으면 갱신 토큰으로 새 토큰을 받습니다.
+  - `POST /api/auth/logout`: Supabase 세션을 끝내고 쿠키를 지웁니다.
+  - 공통 코드는 `src/auth-session.mjs`에 있습니다. 로그인용 Supabase 클라이언트는 요청마다 새로 만들어, 사용자 세션이 자료용 서버 클라이언트에 섞이지 않게 합니다.
+- 자료 API는 `Authorization: Bearer` 머리글(심판·도구)과 쿠키(화면)의 토큰을 같은 `src/verify-login.mjs`로 검사합니다. 쿠키로 보낸 로그인·로그아웃·쓰기 요청은 `Origin`이 같은 출처일 때만 받습니다(CSRF 방어). 다르거나 없으면 `403 CROSS_SITE_REQUEST`입니다.
+- 소유자 검사(`owner_id`)와 서버 전용 설정(`SUPABASE_URL`, `SUPABASE_SECRET_KEY`)은 4단계 그대로입니다. 로그인도 이 두 값만 쓰며, 새 환경변수는 없습니다.
+- 서버 로그인 배포(`246908e`) 뒤 실제 주소에서 확인한 결과: 없는 계정 로그인은 `401 INVALID_CREDENTIALS`, 다른 출처에서 보낸 로그인은 `403`, 무로그인 세션·목록과 가짜 쿠키 목록은 모두 `401` JSON이었습니다. 실제 A 계정 로그인과 메모 CRUD는 자동 점검으로 보내지 않으며 학생이 화면에서 확인합니다.
 - 원본 자료 API는 `aleph.config.json`의 `originalApiUrl`(`https://xvttauolkmecdscuthnb.supabase.co/rest/v1/notes`, 쿼리 없음)입니다. 심판은 anon 키로 이 주소에 직접 요청해 확인합니다.
 - 학습 DB 준비(학생이 SQL Editor에서 검토 후 실행): `public.notes`의 `PUBLIC`·`anon`·`authenticated` 테이블·칸 권한을 모두 회수하는 SQL을 제안했습니다. RLS와 4단계 정책은 남겨 두고, 서버 함수가 쓰는 `service_role`과 다른 테이블은 건드리지 않습니다. 적용 전후 `information_schema.role_table_grants`, `has_table_privilege`, `information_schema.column_privileges`로 대조합니다. SQL 적용 여부는 코딩 도구가 확인하지 못했습니다.
-- 5단계 저장점의 자기 점검에서 anon 키로 원본 API에 직접 보낸 GET·POST의 실제 결과는 `npm run bundle` 결과에 기록됩니다. 화면에 이미 공개된 publishable key를 `public/index.html`에서 읽어 쓰며, 서버 전용 키는 쓰지 않습니다.
+- 자기 점검에서 anon 키로 원본 API에 직접 보낸 GET·POST의 실제 결과는 `npm run bundle` 결과에 기록됩니다. 화면에 키가 없으므로 공개용 키는 실행할 때 환경변수로 넘깁니다(Git Bash: `SUPABASE_PUBLISHABLE_KEY=sb_publishable_… npm run bundle`). 넘기지 않으면 이 두 점검은 미실행으로 남습니다. 서버 전용 키(`sb_secret_`)를 넣으면 점검 코드가 거부합니다.
+- 심판은 배포된 커밋의 `aleph.config.json`을 GitHub에서 로그인 없이 읽습니다. 저장소가 비공개였을 때는 값이 있어도 `originalApiUrl`이 없다고 판정됐고, 저장소를 Public으로 바꾸자 통과했습니다.
 - 다시 실행하기: 4단계까지 준비한 뒤 위 권한 회수 SQL을 실행하고, A로 로그인해 추가·수정·삭제가 그대로 되는지 화면에서 확인합니다.
 
 ### 5단계 남은 약점
 
 - 실제 A 계정의 추가·수정·삭제와 A·B 교차 요청은 자동 점검에서 보내지 않습니다. 화면에서 직접 확인합니다.
 - Supabase Auth의 공개 가입, `POST`의 남의 `id`에 대한 `409` 응답, 옛 커밋 `89a0dfc`의 과거 노출은 4단계와 같이 남아 있습니다.
+- 저장소를 Public으로 바꾸면서 2단계 이후 커밋의 작성자 이메일도 공개됐습니다. 이후 커밋은 GitHub `noreply` 주소로 기록하며, 이미 남은 기록은 고쳐 쓰지 않았습니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙
 
