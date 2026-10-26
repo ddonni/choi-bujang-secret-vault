@@ -23,9 +23,47 @@
 - 가상 메모 네 건은 학습용 Supabase 테이블 `public.notes`에 있습니다. 테이블은 RLS가 켜져 있고 정책이 없어서, `anon`·`authenticated`는 직접 읽을 수 없습니다. `owner_id uuid` 칸은 이후 단계에서 쓰려고 미리 만들어 두었습니다.
 - 화면(`/`)은 서버 함수 `api/notes.js`(`GET /api/notes`)를 거쳐 메모를 읽습니다. 함수는 Vercel 환경변수 `SUPABASE_URL`과 서버 전용 `SUPABASE_SECRET_KEY`를 씁니다. 두 값은 Vercel 대시보드 → Settings → Environment Variables에 직접 넣습니다. 코드·Git·브라우저 파일·응답·로그에는 넣지 않습니다.
 - `/data.json`과 Git의 공개 파일에는 메모가 없습니다.
-- 다시 실행하기: Supabase SQL Editor에서 테이블 생성 SQL을 실행하고, Vercel에 환경변수 두 개를 넣은 뒤 다시 배포합니다.
+- 다시 실행하기: Supabase SQL Editor에서 테이블 생성 SQL을 실행하고, Vercel에 환경변수 두 개를 넣은 뒤 다시 배포합니다. 테이블 생성 SQL(`supabase/notes.sql`)은 가상 메모 문장을 담고 있어 `.gitignore`로 로컬에만 둡니다.
+- 2단계 저장점부터 `aleph.config.json`의 `repoUrl`과 `publicAppUrl`에 실제 GitHub 저장소와 Vercel Production 주소를 적습니다.
+- 자기 점검 `npm run bundle`(먼저 `bundle-notes.json`의 `explanation`을 적습니다): `src/attack-check.mjs`가 배포 주소에 비로그인 요청을 보냅니다. 정상이면 `/data.json`은 메모 0건이고, `/api/notes`는 메모 4건으로 남은 약점이 기록됩니다. 이 결과는 학생의 자기 점검이며 심판 판정이 아닙니다.
 
 **남은 약점:** `/api/notes`는 아직 로그인 확인이 없는 공개 주소입니다. 서버 전용 키는 숨겨졌지만, 이 주소를 아는 누구나 메모 네 건을 그대로 받을 수 있습니다. 3단계에서 로그인 확인으로 막아야 합니다.
+
+### 가상 메모 노출 확인 절차
+
+검색식은 `실습용 가상 (과제|포트폴리오|리추얼|행정) 기록`입니다. 이 README 자체는 이 검색식에 걸리지 않습니다. `<배포주소>`에는 Vercel **Settings → Domains**의 Production 주소를 넣습니다. 배포마다 생기는 주소는 배포 보호 때문에 302가 나올 수 있습니다.
+
+1. GitHub 최신 파일 검색 (저장소 폴더의 Git Bash):
+
+   ```bash
+   git fetch origin && git grep -nE "실습용 가상 (과제|포트폴리오|리추얼|행정) 기록" origin/main
+   ```
+
+   정상: 아무것도 출력되지 않습니다.
+2. 현재 배포의 정적 파일 검색:
+
+   ```bash
+   for p in / /data.json /aleph.json; do echo "$p $(curl -s -o /dev/null -w '%{http_code}' https://<배포주소>$p) $(curl -s https://<배포주소>$p | grep -oE '실습용 가상 (과제|포트폴리오|리추얼|행정) 기록' | wc -l)"; done
+   ```
+
+   정상: `/`과 `/aleph.json`은 `200 0`, `/data.json`은 `404 0`입니다.
+3. 공개 API 약점 확인 (약점 기록용이며, 정적 파일 검색과 따로 적습니다):
+
+   ```bash
+   curl -s https://<배포주소>/api/notes | grep -oE '실습용 가상 (과제|포트폴리오|리추얼|행정) 기록' | wc -l
+   ```
+
+   현재 결과는 `4`여야 합니다. 이 숫자는 로그인 없이 메모를 받을 수 있다는 약점을 뜻합니다.
+
+### 확인 기록
+
+| 항목 | 결과 | 확인한 사람·날짜 |
+| --- | --- | --- |
+| GitHub 최신 파일(`origin/main` = `d000bbd`) | 0건 | 코딩 도구가 로컬에서 `git grep` 실행, 2026-10-26 |
+| 현재 배포 `/`, `/data.json`, `/aleph.json` | `/` 200·0건, `/data.json` 404·0건, `/aleph.json` 200·0건 (`step` 2, 커밋 `d000bbd`) | 코딩 도구가 Production 주소에 비로그인 요청, 2026-10-26 |
+| 공개 API `/api/notes` 약점 | 200·**4건**: 로그인 없이 메모 네 건을 받을 수 있음 (남은 약점) | 코딩 도구가 Production 주소에 비로그인 요청, 2026-10-26 |
+
+**과거 노출은 해소되지 않았습니다.** 첫 공개 커밋 `89a0dfc`의 `data.json`과 `public/data.json`에는 메모 네 건이 그대로 남아 있습니다. GitHub에서 이 커밋을 누구나 열 수 있습니다. 그 커밋으로 만든 옛 Vercel 배포도 남아 있다면 `/data.json`에서 메모가 보일 수 있습니다. 최신 파일 검색 결과가 0건이라는 것은 "지금 파일에 없다"는 뜻일 뿐, 이미 공개됐던 기록이 지워졌다는 뜻이 아닙니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙
 
