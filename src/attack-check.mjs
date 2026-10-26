@@ -41,7 +41,7 @@ async function anonymousRequest(app, path, { method = 'GET', authorization } = {
 
 const PROBE_ID = '00000000-0000-4000-8000-000000000000';
 
-async function stepThreeChecks(app) {
+async function loginChecks(app, step) {
   const staticFile = await anonymousGet(app, '/data.json');
   const probes = [
     ['anonymous_list_read', 'GET', '/api/notes', undefined],
@@ -62,11 +62,15 @@ async function stepThreeChecks(app) {
   // 정상 A 요청에는 학생 계정의 로그인이 필요해 이 자동 점검에서 보내지 않습니다.
   results.push({ attackId: 'normal_a_note_crud', expected: 'A 로그인 뒤 메모 추가·수정·삭제가 되고 지운 뒤 GET은 404',
     observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. 화면에서 직접 확인' });
+  if (step >= 4) {
+    results.push({ attackId: 'b_reads_a_note', expected: 'B 로그인으로 A 메모 GET·PUT·DELETE /api/notes/:id 요청이 404로 거부되고 A 메모는 그대로',
+      observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. B 로그인 창에서 직접 확인' });
+  }
   return results;
 }
 
 export async function runAttackChecks(config) {
-  if (!Number.isInteger(config.step) || config.step < 1 || config.step > 3) {
+  if (!Number.isInteger(config.step) || config.step < 1 || config.step > 4) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   const app = appUrl(config);
@@ -88,7 +92,7 @@ export async function runAttackChecks(config) {
     return [{ attackId: 'anonymous_note_read', expected: '비로그인 화면에서 가상 메모를 확인',
       observed: visible ? '비로그인 요청에서 공개 가상 메모 확인 표시가 보임' : `비로그인 요청에서 확인 표시가 보이지 않음 (HTTP ${response.status})` }];
   }
-  if (config.step === 3) return stepThreeChecks(app);
+  if (config.step >= 3) return loginChecks(app, config.step);
   // 2단계: 공개 정적 파일에는 메모가 없어야 하고, /api/notes는 아직 공개된 약점으로 기록합니다.
   const staticFile = await anonymousGet(app, '/data.json');
   const api = await anonymousGet(app, '/api/notes');

@@ -16,7 +16,7 @@
 
 `aleph.config.json`의 `repoUrl`과 `publicAppUrl`은 1단계에서 자리표시자였고 학생이 편집하지 않습니다. 2단계 저장점부터 실제 GitHub 저장소와 Vercel Production 주소가 들어 있습니다. 2단계 이후 코딩 도구가 필요한 설정과 보호 기능을 단계별로 작성합니다. `npm run bundle`과 `bundle-notes.json`도 1단계의 세 걸음에는 포함되지 않습니다.
 
-로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 저장소의 `src/attack-check.mjs`는 실제 배포 주소에 비로그인 요청을 보냅니다. 1단계에서는 `/data.json`의 공개 가상 메모 확인 표시를 읽었고, 2단계부터는 `/data.json`과 `/api/notes`에서 보이는 가상 메모 수를 셉니다.
+로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 저장소의 `src/attack-check.mjs`는 실제 배포 주소에 비로그인 요청을 보냅니다. 1단계에서는 `/data.json`의 공개 가상 메모 확인 표시를 읽었고, 2단계부터는 `/data.json`과 `/api/notes`에서 보이는 가상 메모 수를 셉니다. 3단계부터는 무로그인·가짜 토큰으로 GET·POST·PUT·DELETE를 보내 거부되는지 기록합니다. 학생 계정이 필요한 정상 A·B 요청은 미실행으로 남깁니다.
 
 ## 2단계: 자료를 코드 밖으로 옮깁니다
 
@@ -60,8 +60,8 @@
 | 항목 | 결과 | 확인한 사람·날짜 |
 | --- | --- | --- |
 | GitHub 최신 파일(`origin/main` = `8d3a0b1`) | 0건 | 코딩 도구가 로컬에서 `git grep` 실행, 2026-10-26 |
-| 현재 배포 `/`, `/data.json`, `/aleph.json` | `/` 200·0건(`X-Content-Type-Options: nosniff`), `/data.json` 404·0건, `/aleph.json` 200·0건 (`step` 2, 커밋 `8d3a0b1`) | 코딩 도구가 Production 주소에 비로그인 요청, 2026-10-26 |
-| 공개 API `/api/notes` 약점 | 200·**4건**: 로그인 없이 메모 네 건을 받을 수 있음 (남은 약점) | 코딩 도구가 Production 주소에 비로그인 요청, 2026-10-26 |
+| 2단계 당시 배포 `/`, `/data.json`, `/aleph.json` | `/` 200·0건(`X-Content-Type-Options: nosniff`), `/data.json` 404·0건, `/aleph.json` 200·0건 (`step` 2, 커밋 `8d3a0b1`) | 코딩 도구가 Production 주소에 비로그인 요청, 2026-10-26 |
+| 2단계 당시 공개 API `/api/notes` 약점 | 200·**4건**: 로그인 없이 메모 네 건을 받을 수 있음 (3단계에서 401로 막음) | 코딩 도구가 Production 주소에 비로그인 요청, 2026-10-26 |
 
 **과거 노출은 해소되지 않았습니다.** 첫 공개 커밋 `89a0dfc`의 `data.json`과 `public/data.json`에는 메모 네 건이 그대로 남아 있습니다. GitHub에서 이 커밋을 누구나 열 수 있습니다. 그 커밋으로 만든 옛 Vercel 배포도 남아 있다면 `/data.json`에서 메모가 보일 수 있습니다. 최신 파일 검색 결과가 0건이라는 것은 "지금 파일에 없다"는 뜻일 뿐, 이미 공개됐던 기록이 지워졌다는 뜻이 아닙니다.
 
@@ -85,9 +85,27 @@
 
 ### 3단계 남은 약점
 
-- `/api/notes/:id`의 GET·PUT·DELETE는 로그인만 확인하고 메모 주인은 검사하지 않습니다. B가 A 메모의 `id`를 알면 읽고 고치고 지울 수 있습니다. 4단계에서 `owner_id` 검사로 막고, B의 타인 메모 접근 결과는 4단계에서 기록합니다.
+- (3단계 당시) `/api/notes/:id`의 GET·PUT·DELETE는 로그인만 확인하고 메모 주인은 검사하지 않았습니다. 4단계에서 `owner_id` 검사로 막았습니다.
 - Supabase Auth의 공개 가입이 켜져 있으면 누구나 계정을 만들어 "로그인한 사용자"가 될 수 있습니다.
-- 2단계 이전 메모 네 건은 `owner_id`가 비어 있어 누구의 목록에도 보이지 않습니다. `/api/notes/:id`로는 여전히 읽을 수 있습니다.
+- (3단계 당시) 2단계 이전 메모 네 건은 `owner_id`가 비어 있었습니다. 4단계에서 학생이 SQL로 A에게 연결합니다.
+
+## 4단계: 로그인해도 내 자료만 보이게 합니다
+
+- 앱 API는 서버가 토큰에서 확인한 사용자 ID로만 메모를 고릅니다. 목록 `GET /api/notes`는 `owner_id`가 같은 메모만 돌려주고, `POST`는 그 ID를 `owner_id`로 저장합니다. `GET·PUT·DELETE /api/notes/:id`는 `id`와 `owner_id`가 모두 맞는 행만 다룹니다. 남의 메모와 없는 메모는 똑같이 `404 NOTE_NOT_FOUND`입니다.
+- 앱 API는 서버 전용 키로 DB에 접속하므로 RLS를 거치지 않습니다. 앱의 A/B 분리는 위 API의 `owner_id` 조건이 맡습니다.
+- 학습 DB 준비(학생이 Supabase SQL Editor에서 직접 실행하며, 이메일이 들어가므로 저장소에 저장하지 않음):
+  1. 이메일로 `auth.users`에서 A·B의 ID를 찾아, 기존 가상 메모 네 건의 `owner_id`를 A로 연결하고 B 소유 시험 메모 한 건을 넣습니다.
+  2. `public.notes`에 RLS 최소 권한을 둡니다. `PUBLIC`·`anon`·`authenticated` 권한을 모두 회수한 뒤 `authenticated`에만 SELECT·INSERT·UPDATE·DELETE를 줍니다. 정책 네 개(`notes_select_own`, `notes_insert_own`, `notes_update_own`, `notes_delete_own`)는 모두 `auth.uid() = owner_id`일 때만 허용합니다. 이 정책은 publishable key로 DB에 직접 들어오는 요청을 막습니다.
+  - 두 SQL의 적용 결과는 코딩 도구가 확인하지 못했습니다. 학생이 `pg_policies`, `information_schema.role_table_grants`, `has_table_privilege`로 확인합니다.
+- 다시 실행하기: 3단계까지 준비한 뒤 Supabase **Authentication → Users**에서 B 계정을 만들고(Auto Confirm), 위 두 SQL을 실행하고 배포 주소에서 A와 B로 각각 로그인합니다.
+- 4단계 저장점 전 로컬 시험(가짜 Supabase, 시험용 키로 서명한 A·B 토큰을 실제 `src/verify-login.mjs`로 검사): B가 A 메모를 읽기·수정·삭제하면 모두 404였고 A 메모는 그대로였습니다. A가 B 메모를 읽거나 지울 때도 404였고, 각자 자기 메모는 추가·수정·삭제할 수 있었습니다. 이 결과는 실제 배포의 A·B 계정 시험이 아닙니다.
+- 자기 점검 `npm run bundle`의 A·B 교차 요청은 학생 비밀번호를 쓰지 않으려고 보내지 않으며, 결과에는 미실행으로 남습니다. 화면에서 직접 확인합니다.
+
+### 4단계 남은 약점
+
+- Supabase Auth의 공개 가입이 켜져 있으면 누구나 계정을 만들 수 있습니다. 새 계정은 자기 메모만 다룰 수 있습니다.
+- `POST /api/notes`에 남의 메모 `id`를 넣으면 `409 NOTE_ID_TAKEN`이 나옵니다. 내용은 보이지 않지만, 그 `id`가 있다는 사실은 알 수 있습니다.
+- 옛 커밋 `89a0dfc`과 옛 배포의 과거 노출은 그대로입니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙
 

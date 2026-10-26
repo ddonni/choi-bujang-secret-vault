@@ -1,6 +1,5 @@
-// 3단계: GET·PUT·DELETE /api/notes/:id.
-// 알려진 허점: 로그인만 확인하고 소유자는 검사하지 않아, B도 A의 메모를 읽고 고치고 지울 수 있습니다.
-// 4단계에서 owner_id 검사로 막습니다.
+// GET·PUT·DELETE /api/notes/:id.
+// 4단계: 서버가 확인한 사용자 ID와 owner_id가 같은 행만 다룹니다. 남의 메모는 없는 메모와 똑같이 404입니다.
 import { allowMethods, databaseFailed, isUuid, readNoteInput, requireLogin } from '../../src/notes-api.mjs';
 
 export default async function handler(request, response) {
@@ -15,7 +14,8 @@ export default async function handler(request, response) {
   const notes = login.db.from('notes');
 
   if (request.method === 'GET') {
-    const { data, error } = await notes.select('id, title, body').eq('id', id).maybeSingle();
+    const { data, error } = await notes.select('id, title, body').eq('id', id)
+      .eq('owner_id', login.userId).maybeSingle();
     if (error) return databaseFailed(response, error);
     if (!data) {
       response.status(404).json({ error: 'NOTE_NOT_FOUND' });
@@ -33,7 +33,7 @@ export default async function handler(request, response) {
     }
     const { data, error } = await notes
       .update({ title: input.title, body: input.body, updated_at: new Date().toISOString() })
-      .eq('id', id).select('id, title, body').maybeSingle();
+      .eq('id', id).eq('owner_id', login.userId).select('id, title, body').maybeSingle();
     if (error) return databaseFailed(response, error);
     if (!data) {
       response.status(404).json({ error: 'NOTE_NOT_FOUND' });
@@ -43,7 +43,7 @@ export default async function handler(request, response) {
     return;
   }
 
-  const { data, error } = await notes.delete().eq('id', id).select('id');
+  const { data, error } = await notes.delete().eq('id', id).eq('owner_id', login.userId).select('id');
   if (error) return databaseFailed(response, error);
   if (!data.length) {
     response.status(404).json({ error: 'NOTE_NOT_FOUND' });
