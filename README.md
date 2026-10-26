@@ -65,6 +65,30 @@
 
 **과거 노출은 해소되지 않았습니다.** 첫 공개 커밋 `89a0dfc`의 `data.json`과 `public/data.json`에는 메모 네 건이 그대로 남아 있습니다. GitHub에서 이 커밋을 누구나 열 수 있습니다. 그 커밋으로 만든 옛 Vercel 배포도 남아 있다면 `/data.json`에서 메모가 보일 수 있습니다. 최신 파일 검색 결과가 0건이라는 것은 "지금 파일에 없다"는 뜻일 뿐, 이미 공개됐던 기록이 지워졌다는 뜻이 아닙니다.
 
+## 3단계: 진짜 로그인을 붙입니다
+
+- `/` 화면은 Supabase Auth 이메일·비밀번호 로그인·로그아웃을 공식 SDK(`@supabase/supabase-js`의 `signInWithPassword`·`signOut`)로 처리합니다. 화면 코드에는 공개용 Project URL과 publishable key만 들어 있습니다. 로그인에 실패하면 이유를 화면에 보여 줍니다.
+- 자료 API는 시작 틀의 `src/verify-login.mjs`로 `Authorization: Bearer` 토큰을 검사합니다. 토큰이 없거나 검사에 실패하면 자료 없이 `401 LOGIN_REQUIRED`를 돌려줍니다. 브라우저가 보낸 `userId`·`role`·`owner_id`는 읽지 않습니다. 검사에 쓴 발급자 정보는 `aleph.config.json`의 `identityProvider`에 있습니다.
+- 로그인한 사용자는 화면에서 가상 메모를 추가·수정·삭제합니다. 경로는 `aleph.config.json`의 `allowedRoutes`와 같습니다.
+
+| 경로 | 동작 |
+| --- | --- |
+| `GET /api/notes` | 서버가 확인한 사용자의 메모 `[{id,title,body}]` |
+| `POST /api/notes` | `{id?,title,body}`, `id`(UUID)가 없으면 서버가 만들어 `201 {id}`, `owner_id`는 확인된 사용자 ID |
+| `GET /api/notes/:id` | `{id,title,body}`, 없으면 404 |
+| `PUT /api/notes/:id` | `{title,body}`로 고친 뒤 `{id,title,body}`, 없으면 404 |
+| `DELETE /api/notes/:id` | 204, 지운 뒤 GET은 404 |
+
+- 다시 실행하기: Supabase SQL Editor에서 2단계 `supabase/notes.sql`(로컬 전용) 다음에 `supabase/notes-step3.sql`을 실행합니다. 이 SQL은 `id`를 UUID로, `content`를 `body`로 바꾸고 RLS와 권한 회수를 유지합니다. 그다음 Supabase **Authentication → Users**에서 A 계정을 만들고(Auto Confirm), 배포 주소에서 로그인합니다.
+- 2단계의 남은 약점(무로그인 `/api/notes`)은 막혔습니다. 3단계 저장점의 자기 점검에서 무로그인과 가짜 토큰으로 보낸 GET·POST·PUT·DELETE 요청이 모두 자료 없이 401이었습니다.
+- 자기 점검 `npm run bundle`은 무로그인·가짜 토큰 요청만 보냅니다. 정상 A의 추가·수정·삭제는 학생 비밀번호를 쓰지 않으려고 자동 점검에서 보내지 않으며, 결과에는 미실행으로 남습니다. 이 결과는 학생의 자기 점검이며 심판 판정이 아닙니다.
+
+### 3단계 남은 약점
+
+- `/api/notes/:id`의 GET·PUT·DELETE는 로그인만 확인하고 메모 주인은 검사하지 않습니다. B가 A 메모의 `id`를 알면 읽고 고치고 지울 수 있습니다. 4단계에서 `owner_id` 검사로 막고, B의 타인 메모 접근 결과는 4단계에서 기록합니다.
+- Supabase Auth의 공개 가입이 켜져 있으면 누구나 계정을 만들어 "로그인한 사용자"가 될 수 있습니다.
+- 2단계 이전 메모 네 건은 `owner_id`가 비어 있어 누구의 목록에도 보이지 않습니다. `/api/notes/:id`로는 여전히 읽을 수 있습니다.
+
 ## 다음 단계의 코딩 도구에 전달할 규칙
 
 [AGENTS.md](AGENTS.md)를 먼저 읽히고 한 번에 한 제작 단위만 요청하세요. 3단계 이후의 로그인, 허용 경로, 5단계의 원본 API 주소, 6단계 이후 정책 규칙은 해당 단계 원고와 계약에 맞춰 추가합니다. 비밀번호·토큰·서버 전용 키·실제 학생 기록을 코드, Git, 제출 묶음에 넣지 않습니다.
