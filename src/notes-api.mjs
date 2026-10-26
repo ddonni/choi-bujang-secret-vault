@@ -5,6 +5,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
+import { ACCESS_COOKIE, readCookie, sameOrigin } from './auth-session.mjs';
 import { createLoginVerifier } from './verify-login.mjs';
 
 const config = JSON.parse(readFileSync(new URL('../aleph.config.json', import.meta.url), 'utf8'));
@@ -42,7 +43,17 @@ export async function requireLogin(request, response) {
     response.status(500).json({ error: 'LOGIN_NOT_CONFIGURED' });
     return null;
   }
-  const login = await verifyLogin(request.headers?.authorization);
+  // 심판·도구는 Authorization 머리글로, 화면은 HttpOnly 쿠키로 토큰을 보냅니다. 둘 다 같은 검사기를 거칩니다.
+  let authorization = request.headers?.authorization;
+  const cookieToken = authorization ? null : readCookie(request, ACCESS_COOKIE);
+  if (cookieToken) {
+    if (request.method !== 'GET' && !sameOrigin(request)) {
+      response.status(403).json({ error: 'CROSS_SITE_REQUEST' });
+      return null;
+    }
+    authorization = `Bearer ${cookieToken}`;
+  }
+  const login = await verifyLogin(authorization);
   if (!login) {
     response.setHeader('WWW-Authenticate', 'Bearer');
     response.status(401).json({ error: 'LOGIN_REQUIRED' });

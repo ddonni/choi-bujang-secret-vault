@@ -1,7 +1,5 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
-import { readFile } from 'node:fs/promises';
-
 const NOTE_SENTENCE = /실습용 가상 (?:과제|포트폴리오|리추얼|행정) 기록/gu;
 
 function appUrl(config) {
@@ -43,8 +41,9 @@ async function anonymousRequest(app, path, { method = 'GET', authorization } = {
 
 const PROBE_ID = '00000000-0000-4000-8000-000000000000';
 
-// 5단계: 화면에 이미 공개된 publishable(anon) 키로 원본 자료 API에 직접 요청합니다.
-// 키를 새로 적지 않고 public/index.html에서 읽어 옵니다. 서버 전용 키는 쓰지 않습니다.
+// 5단계: 공개용 publishable(anon) 키로 원본 자료 API에 직접 요청합니다.
+// 화면 코드에는 키가 없으므로, 실행할 때 SUPABASE_PUBLISHABLE_KEY 환경변수로 받습니다. 없으면 미실행입니다.
+// 서버 전용 키는 쓰지 않습니다.
 async function originalApiChecks(config) {
   let original;
   try {
@@ -53,11 +52,15 @@ async function originalApiChecks(config) {
     throw new Error('aleph.config.json의 originalApiUrl을 확인해 주세요.');
   }
   if (original.protocol !== 'https:' || original.search) throw new Error('originalApiUrl은 쿼리 없는 HTTPS 주소여야 합니다.');
-  const page = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
-  const anonKey = /SUPABASE_PUBLISHABLE_KEY = '(sb_publishable_[A-Za-z0-9_-]+)'/u.exec(page)?.[1];
-  if (!anonKey) throw new Error('public/index.html에서 공개 publishable key를 찾지 못했습니다.');
+  const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY?.trim();
+  const probes = [['original_api_anon_read', 'GET'], ['original_api_anon_create', 'POST']];
+  if (!anonKey || anonKey.startsWith('sb_secret_')) {
+    return probes.map(([attackId, method]) => ({ attackId,
+      expected: `anon 키로 원본 자료 API에 직접 ${method} 요청하면 권한 없음으로 거부됨`,
+      observed: '미실행: SUPABASE_PUBLISHABLE_KEY 환경변수(공개용 키)가 없어 요청하지 않음' }));
+  }
   const results = [];
-  for (const [attackId, method] of [['original_api_anon_read', 'GET'], ['original_api_anon_create', 'POST']]) {
+  for (const [attackId, method] of probes) {
     const response = await fetch(original, {
       method,
       headers: { apikey: anonKey, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
