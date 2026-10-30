@@ -1,0 +1,155 @@
+{
+  "moduleKey": "brute-force",
+  "enforcedByDecider": false,
+  "note": "판정기 요청 계약에 출발 주소가 없어 src/decider.mjs가 아직 집행하지 않는 거부 후보입니다.",
+  "ttlMinutes": 60,
+  "rules": [
+    {
+      "ruleId": "xdr.brute-force.deny-src.203.0.113.10",
+      "decision": "deny",
+      "match": {
+        "srcip": "203.0.113.10"
+      },
+      "createdAt": "2026-10-30T08:20:24.668Z",
+      "expiresAt": "2026-10-30T09:20:24.668Z",
+      "evidenceAlertIds": [
+        "bf-01",
+        "bf-02"
+      ],
+      "patterns": [
+        "same-source-failure-burst",
+        "password-spraying"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.brute-force.deny-src.198.51.100.20",
+      "decision": "deny",
+      "match": {
+        "srcip": "198.51.100.20"
+      },
+      "createdAt": "2026-10-30T08:20:24.668Z",
+      "expiresAt": "2026-10-30T09:20:24.668Z",
+      "evidenceAlertIds": [
+        "bf-03"
+      ],
+      "patterns": [
+        "same-source-failure-burst"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.brute-force.deny-src.192.0.2.30",
+      "decision": "deny",
+      "match": {
+        "srcip": "192.0.2.30"
+      },
+      "createdAt": "2026-10-30T08:20:24.668Z",
+      "expiresAt": "2026-10-30T09:20:24.668Z",
+      "evidenceAlertIds": [
+        "bf-04"
+      ],
+      "patterns": [
+        "same-source-failure-burst"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.brute-force.deny-src.203.0.113.21",
+      "decision": "deny",
+      "match": {
+        "srcip": "203.0.113.21"
+      },
+      "createdAt": "2026-10-30T08:20:24.668Z",
+      "expiresAt": "2026-10-30T09:20:24.668Z",
+      "evidenceAlertIds": [
+        "bf-05"
+      ],
+      "patterns": [
+        "password-spraying"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.brute-force.deny-src.198.51.100.44",
+      "decision": "deny",
+      "match": {
+        "srcip": "198.51.100.44"
+      },
+      "createdAt": "2026-10-30T08:20:24.668Z",
+      "expiresAt": "2026-10-30T09:20:24.668Z",
+      "evidenceAlertIds": [
+        "bf-06"
+      ],
+      "patterns": [
+        "same-source-failure-burst"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.brute-force.deny-src.203.0.113.15",
+      "decision": "deny",
+      "match": {
+        "srcip": "203.0.113.15"
+      },
+      "createdAt": "2026-10-30T08:20:24.668Z",
+      "expiresAt": "2026-10-30T09:20:24.668Z",
+      "evidenceAlertIds": [
+        "bf-07"
+      ],
+      "patterns": [
+        "same-source-failure-burst"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.brute-force.deny-src.192.0.2.18",
+      "decision": "deny",
+      "match": {
+        "srcip": "192.0.2.18"
+      },
+      "createdAt": "2026-10-30T08:20:24.668Z",
+      "expiresAt": "2026-10-30T09:20:24.668Z",
+      "evidenceAlertIds": [
+        "bf-08"
+      ],
+      "patterns": [
+        "same-source-failure-burst"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.brute-force.deny-src.198.51.100.8",
+      "decision": "deny",
+      "match": {
+        "srcip": "198.51.100.8"
+      },
+      "createdAt": "2026-10-30T08:20:24.668Z",
+      "expiresAt": "2026-10-30T09:20:24.668Z",
+      "evidenceAlertIds": [
+        "bf-09"
+      ],
+      "patterns": [
+        "password-spraying"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.brute-force.deny-src.203.0.113.40",
+      "decision": "deny",
+      "match": {
+        "srcip": "203.0.113.40"
+      },
+      "createdAt": "2026-10-30T08:20:24.668Z",
+      "expiresAt": "2026-10-30T09:20:24.668Z",
+      "evidenceAlertIds": [
+        "bf-10"
+      ],
+      "patterns": [
+        "same-source-failure-burst"
+      ],
+      "confidence": 0.95
+    }
+  ],
+  "skipped": []
+}

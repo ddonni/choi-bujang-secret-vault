@@ -1,0 +1,179 @@
+{
+  "schema": "aleph.xdr.result.v1",
+  "moduleKey": "brute-force",
+  "decisions": [
+    {
+      "alertId": "bf-01",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "same-source-failure-burst: 같은 주소 실패 48건(2분), 신호 세기 1"
+    },
+    {
+      "alertId": "bf-02",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "password-spraying: 계정 8개에 대입, 신호 세기 1"
+    },
+    {
+      "alertId": "bf-03",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "same-source-failure-burst: 같은 주소 실패 36건(3분), 신호 세기 1"
+    },
+    {
+      "alertId": "bf-04",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "same-source-failure-burst: 같은 주소 실패 52건(2분), 신호 세기 1"
+    },
+    {
+      "alertId": "bf-05",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "password-spraying: 계정 20개에 대입, 신호 세기 1"
+    },
+    {
+      "alertId": "bf-06",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "same-source-failure-burst: 같은 주소 실패 61건(1분), 신호 세기 1"
+    },
+    {
+      "alertId": "bf-07",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "same-source-failure-burst: 같은 주소 실패 40건, 신호 세기 1"
+    },
+    {
+      "alertId": "bf-08",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "same-source-failure-burst: 같은 주소 실패 70건, 신호 세기 1"
+    },
+    {
+      "alertId": "bf-09",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "password-spraying: 계정 15개에 대입, 신호 세기 1"
+    },
+    {
+      "alertId": "bf-10",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "same-source-failure-burst: 같은 주소 실패 90건, 신호 세기 1"
+    },
+    {
+      "alertId": "bf-11",
+      "action": "alert",
+      "confidence": 0.53,
+      "reason": "same-source-failure-burst: 같은 주소 실패 4건, 신호 세기 0.07"
+    },
+    {
+      "alertId": "bf-12",
+      "action": "alert",
+      "confidence": 0.56,
+      "reason": "same-source-failure-burst: 같은 주소 실패 6건(5분), 신호 세기 0.14"
+    },
+    {
+      "alertId": "bf-13",
+      "action": "alert",
+      "confidence": 0.52,
+      "reason": "same-source-failure-burst: 같은 주소 실패 3건, 신호 세기 0.04"
+    },
+    {
+      "alertId": "bf-14",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "same-source-failure-burst: 같은 주소 실패 5건(10분), 신호 세기 0.11"
+    },
+    {
+      "alertId": "bf-15",
+      "action": "alert",
+      "confidence": 0.53,
+      "reason": "same-source-failure-burst: 같은 주소 실패 4건, 신호 세기 0.07"
+    },
+    {
+      "alertId": "bf-16",
+      "action": "alert",
+      "confidence": 0.52,
+      "reason": "same-source-failure-burst: 같은 주소 실패 3건, 신호 세기 0.04"
+    },
+    {
+      "alertId": "bf-17",
+      "action": "alert",
+      "confidence": 0.53,
+      "reason": "same-source-failure-burst: 같은 주소 실패 4건, 신호 세기 0.07"
+    },
+    {
+      "alertId": "bf-18",
+      "action": "alert",
+      "confidence": 0.6,
+      "reason": "same-source-failure-burst: 같은 주소 실패 8건, 신호 세기 0.21"
+    },
+    {
+      "alertId": "bf-19",
+      "action": "alert",
+      "confidence": 0.52,
+      "reason": "same-source-failure-burst: 같은 주소 실패 3건, 신호 세기 0.04"
+    },
+    {
+      "alertId": "bf-20",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1110 표시가 없는 일반 로그인 기록(실패 0건)"
+    },
+    {
+      "alertId": "bf-21",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1110 표시가 없는 일반 로그인 기록(실패 0건)"
+    },
+    {
+      "alertId": "bf-22",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1110 표시가 없는 일반 로그인 기록(실패 1건)"
+    },
+    {
+      "alertId": "bf-23",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1110 표시가 없는 일반 로그인 기록(실패 0건)"
+    },
+    {
+      "alertId": "bf-24",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1110 표시가 없는 일반 로그인 기록(실패 0건)"
+    },
+    {
+      "alertId": "bf-25",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1110 표시가 없는 일반 로그인 기록(실패 0건)"
+    },
+    {
+      "alertId": "bf-26",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1110 표시가 없는 일반 로그인 기록(실패 0건)"
+    },
+    {
+      "alertId": "bf-27",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1110 표시가 없는 일반 로그인 기록(실패 0건)"
+    },
+    {
+      "alertId": "bf-28",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1110 표시가 없는 일반 로그인 기록(실패 0건)"
+    }
+  ],
+  "counts": {
+    "block": 10,
+    "alert": 9,
+    "record": 9
+  }
+}

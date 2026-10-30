@@ -1,0 +1,38 @@
+2026-10-30T08:19:55.776Z	brute-force	bf-01	block	0.95	203.0.113.10	same-source-failure-burst: 같은 주소 실패 48건(2분), 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-02	block	0.95	203.0.113.10	password-spraying: 계정 8개에 대입, 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-03	block	0.95	198.51.100.20	same-source-failure-burst: 같은 주소 실패 36건(3분), 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-04	block	0.95	192.0.2.30	same-source-failure-burst: 같은 주소 실패 52건(2분), 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-05	block	0.95	203.0.113.21	password-spraying: 계정 20개에 대입, 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-06	block	0.95	198.51.100.44	same-source-failure-burst: 같은 주소 실패 61건(1분), 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-07	block	0.95	203.0.113.15	same-source-failure-burst: 같은 주소 실패 40건, 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-08	block	0.95	192.0.2.18	same-source-failure-burst: 같은 주소 실패 70건, 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-09	block	0.95	198.51.100.8	password-spraying: 계정 15개에 대입, 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-10	block	0.95	203.0.113.40	same-source-failure-burst: 같은 주소 실패 90건, 신호 세기 1
+2026-10-30T08:19:55.776Z	brute-force	bf-11	alert	0.53	192.0.2.50	same-source-failure-burst: 같은 주소 실패 4건, 신호 세기 0.07
+2026-10-30T08:19:55.776Z	brute-force	bf-12	alert	0.56	198.51.100.50	same-source-failure-burst: 같은 주소 실패 6건(5분), 신호 세기 0.14
+2026-10-30T08:19:55.776Z	brute-force	bf-13	alert	0.52	203.0.113.50	same-source-failure-burst: 같은 주소 실패 3건, 신호 세기 0.04
+2026-10-30T08:19:55.776Z	brute-force	bf-14	alert	0.55	192.0.2.51	same-source-failure-burst: 같은 주소 실패 5건(10분), 신호 세기 0.11
+2026-10-30T08:19:55.776Z	brute-force	bf-15	alert	0.53	198.51.100.51	same-source-failure-burst: 같은 주소 실패 4건, 신호 세기 0.07
+2026-10-30T08:19:55.776Z	brute-force	bf-16	alert	0.52	203.0.113.51	same-source-failure-burst: 같은 주소 실패 3건, 신호 세기 0.04
+2026-10-30T08:19:55.776Z	brute-force	bf-17	alert	0.53	192.0.2.52	same-source-failure-burst: 같은 주소 실패 4건, 신호 세기 0.07
+2026-10-30T08:19:55.776Z	brute-force	bf-18	alert	0.60	198.51.100.52	same-source-failure-burst: 같은 주소 실패 8건, 신호 세기 0.21
+2026-10-30T08:19:55.776Z	brute-force	bf-19	alert	0.52	203.0.113.52	same-source-failure-burst: 같은 주소 실패 3건, 신호 세기 0.04
+2026-10-30T08:20:24.668Z	brute-force	bf-01	block	0.95	203.0.113.10	same-source-failure-burst: 같은 주소 실패 48건(2분), 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-02	block	0.95	203.0.113.10	password-spraying: 계정 8개에 대입, 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-03	block	0.95	198.51.100.20	same-source-failure-burst: 같은 주소 실패 36건(3분), 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-04	block	0.95	192.0.2.30	same-source-failure-burst: 같은 주소 실패 52건(2분), 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-05	block	0.95	203.0.113.21	password-spraying: 계정 20개에 대입, 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-06	block	0.95	198.51.100.44	same-source-failure-burst: 같은 주소 실패 61건(1분), 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-07	block	0.95	203.0.113.15	same-source-failure-burst: 같은 주소 실패 40건, 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-08	block	0.95	192.0.2.18	same-source-failure-burst: 같은 주소 실패 70건, 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-09	block	0.95	198.51.100.8	password-spraying: 계정 15개에 대입, 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-10	block	0.95	203.0.113.40	same-source-failure-burst: 같은 주소 실패 90건, 신호 세기 1
+2026-10-30T08:20:24.668Z	brute-force	bf-11	alert	0.53	192.0.2.50	same-source-failure-burst: 같은 주소 실패 4건, 신호 세기 0.07
+2026-10-30T08:20:24.668Z	brute-force	bf-12	alert	0.56	198.51.100.50	same-source-failure-burst: 같은 주소 실패 6건(5분), 신호 세기 0.14
+2026-10-30T08:20:24.668Z	brute-force	bf-13	alert	0.52	203.0.113.50	same-source-failure-burst: 같은 주소 실패 3건, 신호 세기 0.04
+2026-10-30T08:20:24.668Z	brute-force	bf-14	alert	0.55	192.0.2.51	same-source-failure-burst: 같은 주소 실패 5건(10분), 신호 세기 0.11
+2026-10-30T08:20:24.668Z	brute-force	bf-15	alert	0.53	198.51.100.51	same-source-failure-burst: 같은 주소 실패 4건, 신호 세기 0.07
+2026-10-30T08:20:24.668Z	brute-force	bf-16	alert	0.52	203.0.113.51	same-source-failure-burst: 같은 주소 실패 3건, 신호 세기 0.04
+2026-10-30T08:20:24.668Z	brute-force	bf-17	alert	0.53	192.0.2.52	same-source-failure-burst: 같은 주소 실패 4건, 신호 세기 0.07
+2026-10-30T08:20:24.668Z	brute-force	bf-18	alert	0.60	198.51.100.52	same-source-failure-burst: 같은 주소 실패 8건, 신호 세기 0.21
+2026-10-30T08:20:24.668Z	brute-force	bf-19	alert	0.52	203.0.113.52	same-source-failure-burst: 같은 주소 실패 3건, 신호 세기 0.04

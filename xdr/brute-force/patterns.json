@@ -1,0 +1,28 @@
+{
+  "moduleKey": "brute-force",
+  "technique": {
+    "id": "T1110",
+    "name": "Brute Force (무차별 대입)",
+    "url": "https://attack.mitre.org/techniques/T1110/"
+  },
+  "patterns": [
+    {
+      "name": "same-source-failure-burst",
+      "label": "같은 주소의 짧은 시간 로그인 실패 연속",
+      "condition": "rule.mitre에 T1110이 있고, 같은 출발 주소(data.srcip)에서 짧은 시간(rule.description에 적힌 분 단위) 안에 로그인 실패(data.count)가 여러 건 쌓였다.",
+      "fields": ["rule.mitre", "data.srcip", "data.count", "rule.description"],
+      "basis": "MITRE ATT&CK T1110.001 Password Guessing: 한 곳에서 계정 비밀번호를 거듭 추측하는 시도이며, 같은 출발지의 짧은 시간 로그인 실패 연속으로 드러난다. https://attack.mitre.org/techniques/T1110/001/"
+    },
+    {
+      "name": "password-spraying",
+      "label": "여러 계정에 같은 비밀번호 대입",
+      "condition": "rule.mitre에 T1110이 있고, 같은 출발 주소(data.srcip)가 여러 계정(data.accounts 목록, 또는 rule.description의 '여러 계정'·'계정 이름을 바꿔 가며')에 같은 비밀번호를 넣었다.",
+      "fields": ["rule.mitre", "data.srcip", "data.accounts", "rule.description"],
+      "basis": "MITRE ATT&CK T1110.003 Password Spraying: 흔한 비밀번호 하나(또는 몇 개)를 여러 계정에 대입해 계정 잠금을 피하는 시도다. https://attack.mitre.org/techniques/T1110/003/"
+    }
+  ],
+  "notes": [
+    "숫자 기준(몇 분 안에 몇 건)은 MITRE ATT&CK에 정해진 값이 없어 이 파일에 넣지 않았습니다. decide.mjs를 만들 때 학생이 정합니다.",
+    "decide.mjs는 이 파일을 불러오지 않습니다. 심판 격리 환경 규칙에 따라 필요한 패턴을 decide.mjs 맨 위 상수로 옮겨 적습니다."
+  ]
+}
