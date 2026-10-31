@@ -1,0 +1,37 @@
+{
+  "moduleKey": "web-injection",
+  "technique": {
+    "id": "T1190",
+    "name": "Exploit Public-Facing Application (외부 공개 앱 악용)",
+    "url": "https://attack.mitre.org/techniques/T1190/"
+  },
+  "patterns": [
+    {
+      "name": "sql-injection-in-params",
+      "label": "요청 인자 안의 SQL 구문",
+      "condition": "rule.mitre에 T1190이 있고, 요청 인자(data.url의 ? 뒤)에 SQL 구문을 이어 붙이거나 조회를 덧붙인 표기(rule.description의 'SQL 구문'·'SQL 표식'·'데이터베이스 조회를 이어 붙이는')가 같은 출발 주소(data.srcip)에서 반복(data.count)됐다.",
+      "fields": ["rule.mitre", "data.srcip", "data.url", "data.count", "rule.description"],
+      "basis": "MITRE ATT&CK T1190: 공개된 웹 앱의 약점을 노리는 공격이며, 탐지 항목은 요청 내용에서 SQL 주입 문자열 같은 공격 흔적을 찾으라고 적는다(CWE-89 SQL Injection). https://attack.mitre.org/techniques/T1190/"
+    },
+    {
+      "name": "script-tag-in-params",
+      "label": "요청 인자 안의 스크립트 태그",
+      "condition": "rule.mitre에 T1190이 있고, 요청 인자(data.url의 ? 뒤)에 스크립트 태그 삽입 표기(rule.description의 '스크립트 삽입 표기'·'스크립트 표식')가 같은 출발 주소(data.srcip)에서 반복(data.count)됐다.",
+      "fields": ["rule.mitre", "data.srcip", "data.url", "data.count", "rule.description"],
+      "basis": "MITRE ATT&CK T1190: 웹 앱의 흔한 약점은 OWASP Top 10·CWE Top 25를 보라고 안내하며, 그 목록의 스크립트 삽입이 여기에 해당한다(CWE-79 Cross-site Scripting). https://attack.mitre.org/techniques/T1190/"
+    },
+    {
+      "name": "path-traversal-repeat",
+      "label": "경로 거슬러 올라가기(../) 반복",
+      "condition": "rule.mitre에 T1190이 있고, 파일 경로 인자(data.url의 path·name 등)에 상위 폴더로 거슬러 올라가는 표기(rule.description의 '여러 단계 거슬러 올라가는'·'경로 이탈')가 같은 출발 주소(data.srcip)에서 반복(data.count)됐다.",
+      "fields": ["rule.mitre", "data.srcip", "data.url", "data.count", "rule.description"],
+      "basis": "MITRE ATT&CK T1190: 웹 앱의 흔한 약점은 OWASP Top 10·CWE Top 25를 보라고 안내하며, 그 목록의 경로 거슬러 올라가기가 여기에 해당한다(CWE-22 Path Traversal). https://attack.mitre.org/techniques/T1190/"
+    }
+  ],
+  "notes": [
+    "숫자 기준(몇 번 반복하면 공격인지)은 MITRE ATT&CK에 정해진 값이 없어 이 파일에 넣지 않았습니다. decide.mjs를 만들 때 학생이 정합니다.",
+    "'select'·'스크립트'·'SQL' 같은 낱말이 수업명·공지 제목으로 한 번 나온 것은 주입 표기가 아니므로 위 패턴의 조건이 아닙니다.",
+    "경보의 data.url 값은 문서용 표기(doc-...)이며 실제 공격 문자열이 아닙니다. 이 파일에도 실제 공격 문자열을 적지 않았습니다.",
+    "decide.mjs는 이 파일을 불러오지 않습니다. 심판 격리 환경 규칙에 따라 필요한 패턴을 decide.mjs 맨 위 상수로 옮겨 적습니다."
+  ]
+}

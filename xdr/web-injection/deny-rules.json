@@ -1,0 +1,108 @@
+{
+  "moduleKey": "web-injection",
+  "enforcedByDecider": false,
+  "note": "판정기 요청 계약에 출발 주소가 없어 src/decider.mjs가 아직 집행하지 않는 거부 후보입니다.",
+  "ttlMinutes": 60,
+  "rules": [
+    {
+      "ruleId": "xdr.web-injection.deny-src.203.0.113.10",
+      "decision": "deny",
+      "match": {
+        "srcip": "203.0.113.10"
+      },
+      "createdAt": "2026-10-31T13:08:45.814Z",
+      "expiresAt": "2026-10-31T14:08:45.814Z",
+      "evidenceAlertIds": [
+        "wi-01",
+        "wi-02"
+      ],
+      "patterns": [
+        "sql-injection-in-params",
+        "script-tag-in-params"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.web-injection.deny-src.198.51.100.15",
+      "decision": "deny",
+      "match": {
+        "srcip": "198.51.100.15"
+      },
+      "createdAt": "2026-10-31T13:08:45.814Z",
+      "expiresAt": "2026-10-31T14:08:45.814Z",
+      "evidenceAlertIds": [
+        "wi-03"
+      ],
+      "patterns": [
+        "path-traversal-repeat"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.web-injection.deny-src.192.0.2.15",
+      "decision": "deny",
+      "match": {
+        "srcip": "192.0.2.15"
+      },
+      "createdAt": "2026-10-31T13:08:45.814Z",
+      "expiresAt": "2026-10-31T14:08:45.814Z",
+      "evidenceAlertIds": [
+        "wi-04"
+      ],
+      "patterns": [
+        "sql-injection-in-params"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.web-injection.deny-src.203.0.113.18",
+      "decision": "deny",
+      "match": {
+        "srcip": "203.0.113.18"
+      },
+      "createdAt": "2026-10-31T13:08:45.814Z",
+      "expiresAt": "2026-10-31T14:08:45.814Z",
+      "evidenceAlertIds": [
+        "wi-05"
+      ],
+      "patterns": [
+        "sql-injection-in-params",
+        "script-tag-in-params"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.web-injection.deny-src.192.0.2.21",
+      "decision": "deny",
+      "match": {
+        "srcip": "192.0.2.21"
+      },
+      "createdAt": "2026-10-31T13:08:45.814Z",
+      "expiresAt": "2026-10-31T14:08:45.814Z",
+      "evidenceAlertIds": [
+        "wi-07"
+      ],
+      "patterns": [
+        "path-traversal-repeat"
+      ],
+      "confidence": 0.95
+    },
+    {
+      "ruleId": "xdr.web-injection.deny-src.203.0.113.22",
+      "decision": "deny",
+      "match": {
+        "srcip": "203.0.113.22"
+      },
+      "createdAt": "2026-10-31T13:08:45.814Z",
+      "expiresAt": "2026-10-31T14:08:45.814Z",
+      "evidenceAlertIds": [
+        "wi-08"
+      ],
+      "patterns": [
+        "sql-injection-in-params"
+      ],
+      "confidence": 0.95
+    }
+  ],
+  "skipped": []
+}

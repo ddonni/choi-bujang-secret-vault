@@ -1,0 +1,167 @@
+{
+  "schema": "aleph.xdr.result.v1",
+  "moduleKey": "web-injection",
+  "decisions": [
+    {
+      "alertId": "wi-01",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "sql-injection-in-params: 반복 12번, 신호 세기 1"
+    },
+    {
+      "alertId": "wi-02",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "script-tag-in-params: 반복 9번, 신호 세기 1"
+    },
+    {
+      "alertId": "wi-03",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "path-traversal-repeat: 반복 8번, 신호 세기 1"
+    },
+    {
+      "alertId": "wi-04",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "sql-injection-in-params: 반복 20번, 신호 세기 1"
+    },
+    {
+      "alertId": "wi-05",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "sql-injection-in-params+script-tag-in-params: 반복 15번, 신호 세기 1"
+    },
+    {
+      "alertId": "wi-06",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 11번)"
+    },
+    {
+      "alertId": "wi-07",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "path-traversal-repeat: 반복 14번, 신호 세기 1"
+    },
+    {
+      "alertId": "wi-08",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "sql-injection-in-params: 반복 10번, 신호 세기 1"
+    },
+    {
+      "alertId": "wi-09",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 1번)"
+    },
+    {
+      "alertId": "wi-10",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 1번)"
+    },
+    {
+      "alertId": "wi-11",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 1번)"
+    },
+    {
+      "alertId": "wi-12",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 1번)"
+    },
+    {
+      "alertId": "wi-13",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 1번)"
+    },
+    {
+      "alertId": "wi-14",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 1번)"
+    },
+    {
+      "alertId": "wi-15",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 1번)"
+    },
+    {
+      "alertId": "wi-16",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 1번)"
+    },
+    {
+      "alertId": "wi-17",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "T1190 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 1번)"
+    },
+    {
+      "alertId": "wi-18",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1190 표시와 주입 표기가 없는 일반 요청"
+    },
+    {
+      "alertId": "wi-19",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1190 표시와 주입 표기가 없는 일반 요청"
+    },
+    {
+      "alertId": "wi-20",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1190 표시와 주입 표기가 없는 일반 요청"
+    },
+    {
+      "alertId": "wi-21",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1190 표시와 주입 표기가 없는 일반 요청"
+    },
+    {
+      "alertId": "wi-22",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1190 표시와 주입 표기가 없는 일반 요청"
+    },
+    {
+      "alertId": "wi-23",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1190 표시와 주입 표기가 없는 일반 요청"
+    },
+    {
+      "alertId": "wi-24",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1190 표시와 주입 표기가 없는 일반 요청"
+    },
+    {
+      "alertId": "wi-25",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1190 표시와 주입 표기가 없는 일반 요청"
+    },
+    {
+      "alertId": "wi-26",
+      "action": "record",
+      "confidence": 0.1,
+      "reason": "패턴 해당 없음: T1190 표시와 주입 표기가 없는 일반 요청"
+    }
+  ],
+  "counts": {
+    "block": 7,
+    "alert": 10,
+    "record": 9
+  }
+}
