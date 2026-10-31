@@ -152,14 +152,15 @@
 | 파일 | 하는 일 |
 | --- | --- |
 | `xdr/web-injection/patterns.json` | MITRE ATT&CK T1190 근거 패턴 세 개: `sql-injection-in-params`(요청 인자 안의 SQL 구문, CWE-89), `script-tag-in-params`(스크립트 태그, CWE-79), `path-traversal-repeat`(경로 거슬러 올라가기 반복, CWE-22) |
-| `xdr/web-injection/decide.mjs` | 심판이 격리 환경에서 불러오는 판정기. `import`·파일 읽기·바깥 요청 없이 위 패턴을 맨 위 상수로 옮겨 적고 `decide(alert)`가 `{action, confidence, reason}`을 돌려줍니다. 확신도 0.85 이상은 `block`, 0.5 이상은 `alert`, 그 아래는 `record`입니다. T1190 표시나 패턴 일치가 없으면 0.1, 있으면 0.5에서 시작해 패턴이 맞은 표기의 반복 횟수(1~8번)만큼 0.95까지 올립니다. 숫자 기준은 MITRE에 없어 연습용으로 정한 값입니다. |
+| `xdr/web-injection/decide.mjs` | 심판이 격리 환경에서 불러오는 판정기. `import`·파일 읽기·바깥 요청 없이 위 패턴을 맨 위 상수로 옮겨 적고 `decide(alert)`가 `{action, confidence, reason}`을 돌려줍니다. 확신도 0.85 이상은 `block`, 0.5 이상은 `alert`, 그 아래는 `record`입니다. T1190 표시나 패턴 일치가 없으면 0.1, 있으면 0.5에서 시작해 같은 출발 주소(`data.srcip`)의 반복 횟수(1~8번)만큼 0.95까지 올립니다. 출발 주소가 없으면 반복을 세지 않습니다. 숫자 기준은 MITRE에 없어 연습용으로 정한 값입니다. |
 | `xdr/web-injection/respond.mjs` | `decide` 결과 중 `block`의 출발 주소만 거부 후보로 `xdr/web-injection/deny-rules.json`에 씁니다(만료 시각 = 처리 시각 + 60분, 근거 경보 번호 포함). 계정 이름으로는 규칙을 만들지 않고, 정상(`record`) 이벤트에 나온 주소는 뺍니다. `block`·`alert`는 `xdr/alerts.log`에 한 줄씩 쌓고, 시험 경보를 후보 규칙에 다시 흘려 막힘·통과를 셉니다. |
 | `xdr/web-injection/read-alerts.mjs` | 확인용. 시각·출발 주소·계정·규칙 수준·설명만 뽑고 비밀값처럼 보이는 값은 가립니다. 요청 주소는 뽑지 않습니다. `decide.mjs`가 불러오지 않습니다. |
 
 - 다시 실행하기: `npm run xdr:run -- web-injection`(결과 `xdr/web-injection/result.json`, 성공하면 화면 출력 없음), `node xdr/web-injection/respond.mjs`(거부 후보·알림·다시 흘리기), `node xdr/web-injection/read-alerts.mjs`(경보 확인).
-- 저장점의 `npm run xdr:run -- web-injection` 결과: `block` 7, `alert` 10, `record` 9. T1190 표시가 없는 정상 이벤트 9건은 모두 `record`였습니다. 이 결과는 학생의 로컬 실행이며, 심판이 격리 환경에서 `decide.mjs`를 다시 실행해 판정합니다.
-- 다시 흘리기 결과: `block` 7건만 막혔고, `alert` 10건과 `record` 9건은 통과했습니다.
-- 남은 약점: `wi-06`(명령 구분자 표기 11번 반복)은 세 패턴에 해당하지 않아 `alert`입니다. 막으려면 명령 주입 패턴(CWE-78)을 따로 추가해야 합니다.
+- 저장점의 `npm run xdr:run -- web-injection` 결과: `block` 8, `alert` 9, `record` 9. T1190 표시가 없는 정상 이벤트 9건은 모두 `record`였습니다. 이 결과는 학생의 로컬 실행이며, 심판이 격리 환경에서 `decide.mjs`를 다시 실행해 판정합니다.
+- 다시 흘리기 결과: `block` 8건만 막혔고, `alert` 9건과 `record` 9건은 통과했습니다.
+- 첫 제출 기록: `decide.mjs`를 push하기 전에 제출해 심판이 파일을 찾지 못했습니다. 두 번째 제출은 `X02_CLEAR_NOT_BLOCKED`였습니다. `wi-06`(명령 구분자 표기 11번 반복)을 세 패턴에 맞지 않는다는 이유로 `alert`로 낮췄고, 출발 주소를 확인하지 않았기 때문입니다. 지금은 T1190 표시와 같은 주소의 반복으로 `block`합니다.
+- 남은 약점: `wi-06`의 차단 근거는 세 패턴이 아니라 T1190 표시와 반복입니다. 명령 주입 패턴(CWE-78)은 `patterns.json`에 없습니다.
 - 거부 후보는 xdr-01과 같은 이유로 **아직 ZTNA 판정기(`src/decider.mjs`)가 집행하지 않습니다.** 판정기 요청 계약에는 출발 주소가 없고 쿼리도 길이·지문으로만 옵니다. 판정기의 기존 규칙(`starter.deny`)은 바꾸지 않았습니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙

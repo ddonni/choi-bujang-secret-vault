@@ -37,6 +37,7 @@ const REPEAT_STRONG = 8;
 
 const BLOCK_AT = 0.85;
 const ALERT_AT = 0.5;
+const IPV4 = /^(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}$/u;
 
 const clamp01 = value => Math.min(1, Math.max(0, value));
 const ramp = (value, weak, strong) => clamp01((value - weak) / (strong - weak));
@@ -67,18 +68,20 @@ export function decide(alert) {
   const tagged = mitre.some(id => typeof id === 'string' && (id === TECHNIQUE || id.startsWith(`${TECHNIQUE}.`)));
   const params = requestParams(alert);
   const repeats = repeatCount(alert, description);
+  const srcip = typeof alert?.data?.srcip === 'string' ? alert.data.srcip.trim() : '';
+  const sameSource = IPV4.test(srcip);
   const matched = PATTERNS.filter(pattern => pattern.description.test(description) || pattern.params.test(params));
 
   if (!tagged && matched.length === 0) {
     return { action: 'record', confidence: 0.1, reason: `패턴 해당 없음: ${TECHNIQUE} 표시와 주입 표기가 없는 일반 요청` };
   }
-  if (matched.length === 0) {
-    return { action: 'alert', confidence: ALERT_AT, reason: `${TECHNIQUE} 표시만 있음: 세 패턴 중 맞는 표기 없음(반복 ${repeats}번)` };
-  }
 
-  // 패턴에 걸린 경보는 0.5에서 시작하고, 같은 표기의 반복이 뚜렷할수록 0.95까지 올립니다.
-  const strength = ramp(repeats, REPEAT_WEAK, REPEAT_STRONG);
+  // 주입 신호(T1190 표시 또는 세 패턴 일치)가 있는 경보는 0.5에서 시작합니다.
+  // 같은 출발 주소(data.srcip)에서 반복이 뚜렷할수록 0.95까지 올립니다. 주소를 알 수 없으면 반복을 세지 않습니다.
+  const strength = sameSource ? ramp(repeats, REPEAT_WEAK, REPEAT_STRONG) : 0;
   const confidence = round2(ALERT_AT + 0.45 * strength);
   const action = confidence >= BLOCK_AT ? 'block' : confidence >= ALERT_AT ? 'alert' : 'record';
-  return { action, confidence, reason: `${matched.map(pattern => pattern.name).join('+')}: 반복 ${repeats}번, 신호 세기 ${round2(strength)}` };
+  const basis = matched.length ? matched.map(pattern => pattern.name).join('+') : `${TECHNIQUE} 표시(세 패턴에 맞는 표기 없음)`;
+  const source = sameSource ? `같은 주소 ${srcip}` : '출발 주소 없음';
+  return { action, confidence, reason: `${basis}: ${source}에서 반복 ${repeats}번, 신호 세기 ${round2(strength)}` };
 }
