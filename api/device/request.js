@@ -1,6 +1,6 @@
 // POST /api/device/request. 이 기기의 승인을 요청합니다. 요청만 기록하며 승인 권한을 주지 않습니다.
 import { sameOrigin } from '../../src/auth-session.mjs';
-import { countPendingDevices, findDevice, insertDeviceRequest, issueDeviceToken, readDeviceToken } from '../../src/device-approval.mjs';
+import { countPendingDevices, engineConfigured, findDevice, insertDeviceRequest, issueDeviceToken, readDeviceToken, resolveDeviceStatus } from '../../src/device-approval.mjs';
 import { databaseFailed, requireLogin } from '../../src/notes-api.mjs';
 
 const MAX_PENDING_DEVICES = 5;
@@ -19,6 +19,12 @@ export default async function handler(request, response) {
   const login = await requireLogin(request, response, { device: false });
   if (!login) return;
   const { db, userId } = login;
+  // 반 엔진을 쓸 때는 승인을 엔진이 정합니다. 이 경로는 결과만 돌려주고 아무것도 기록하지 않습니다.
+  if (engineConfigured()) {
+    const device = await resolveDeviceStatus(request, db, userId);
+    response.status(200).json({ status: device.status, source: device.source });
+    return;
+  }
   const existing = readDeviceToken(request);
   if (existing) {
     const { data, error } = await findDevice(db, userId, existing);

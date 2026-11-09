@@ -52,7 +52,7 @@
         <button id="device-refresh" class="secondary" type="button">승인 상태 다시 확인</button>
       </div>
       <p class="error" id="device-error" role="alert" hidden></p>
-      <p>승인 요청 버튼은 요청만 보냅니다. 이 승인은 자료실 서버의 등록 기록이며 반 엔진의 기기 판정과는 별개입니다.</p>
+      <p>승인 요청 버튼은 요청만 보냅니다. 상태는 서버가 돌려준 승인 결과로만 표시합니다. 반 엔진이 연결되지 않으면 자료실 서버의 자체 기록을 씁니다.</p>
       <p id="install-status">브라우저에서 실행 중입니다. 앱으로 설치해도 기기 승인이 확인되는 것은 아닙니다.</p>
     </section>
 
@@ -135,6 +135,7 @@
     let currentUser = null;
     let deviceStatus = 'none';
     let deviceRequestId = '';
+    let deviceSource = '';
     let editingId = null;
     let loadId = 0;
 
@@ -256,13 +257,13 @@
       const texts = {
         none: '이 기기는 아직 승인을 요청하지 않았습니다.',
         pending: `승인 대기 중입니다.${code}`,
-        approved: '승인됨: 서버가 이 기기를 등록 기기로 확인했습니다.',
+        approved: deviceSource === 'engine' ? '승인됨: 반 엔진이 이 기기를 등록 기기로 확인했습니다.' : '승인됨: 자료실 서버의 자체 기록입니다(반 엔진 미연결).',
         revoked: `승인이 취소된 기기입니다.${code}`,
         unknown: '기기 승인 상태를 확인하지 못했습니다. 자료를 보여 주지 않습니다.',
       };
       deviceText.textContent = currentUser ? (texts[deviceStatus] ?? texts.unknown) : '로그인하면 이 기기의 승인 상태를 서버에서 확인합니다.';
       deviceControls.hidden = !currentUser || deviceStatus === 'approved';
-      deviceRequest.hidden = deviceStatus !== 'none';
+      deviceRequest.hidden = deviceStatus !== 'none' || deviceSource === 'engine';
       editor.hidden = !(currentUser && deviceStatus === 'approved');
     }
 
@@ -275,6 +276,7 @@
         const result = response?.ok ? await response.json().catch(() => null) : null;
         deviceStatus = result?.status ?? 'unknown';
         deviceRequestId = result?.requestId ?? '';
+        deviceSource = result?.source ?? '';
       }
       renderDevice();
       await loadNotes();

@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { ACCESS_COOKIE, readCookie, sameOrigin } from './auth-session.mjs';
-import { findDevice, readDeviceToken } from './device-approval.mjs';
+import { resolveDeviceStatus } from './device-approval.mjs';
 import { RESOURCE_IDS } from './resource-ids.mjs';
 import { createLoginVerifier } from './verify-login.mjs';
 
@@ -63,15 +63,14 @@ export async function requireLogin(request, response, { device = true } = {}) {
     return null;
   }
   supabase ??= createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  // 학생 로그인은 서버의 기기 등록 기록이 승인일 때만 자료를 받습니다. 심판 토큰은 서명이 검증된 별도 경로입니다.
+  // 학생 로그인은 승인 결과(반 엔진이 설정되면 엔진, 아니면 서버의 자체 기록)가 승인일 때만 자료를 받습니다. 심판 토큰은 서명이 검증된 별도 경로입니다.
   if (device && login.kind === 'student') {
-    const token = readDeviceToken(request);
-    const { data, error } = token ? await findDevice(supabase, login.userId, token) : { data: null, error: null };
-    if (error) {
-      databaseFailed(response, error);
+    const device = await resolveDeviceStatus(request, supabase, login.userId);
+    if (device.error) {
+      databaseFailed(response, device.error);
       return null;
     }
-    if (data?.status !== 'approved') {
+    if (device.status !== 'approved') {
       console.warn('notes: 거부 device_not_approved', request.method);
       response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
       return null;
