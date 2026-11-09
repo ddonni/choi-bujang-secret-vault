@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BYTE BACK | 점령된 자료실</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#101a28">
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; }
     body { margin: 0; min-height: 100vh; background: #101a28; color: #ecf4ff; }
@@ -38,6 +41,20 @@
     <h1>점령된 자료실</h1>
     <p>자료는 이제 코드가 아닌 데이터베이스에 있고, 서버 함수를 거쳐 읽습니다. 아래 기록은 모두 실습을 위해 만든 가상 자료입니다.</p>
     <div class="notice">자료 API는 로그인 토큰을 검사합니다. 로그인하지 않은 방문자에게는 자료를 보내지 않고, 로그인한 사용자에게는 자기 메모만 보냅니다.</div>
+
+    <div class="notice" id="offline-notice" role="status" hidden>지금은 오프라인입니다. 인터넷에 연결되면 자료를 다시 불러와 주세요. 메모는 이 기기에 저장되지 않습니다.</div>
+
+    <section class="panel" aria-labelledby="device-title">
+      <h2 id="device-title">기기 승인 상태</h2>
+      <p id="device-status">로그인하면 이 기기의 승인 상태를 서버에서 확인합니다.</p>
+      <div class="actions" id="device-controls" hidden>
+        <button id="device-request" type="button">이 기기 승인 요청</button>
+        <button id="device-refresh" class="secondary" type="button">승인 상태 다시 확인</button>
+      </div>
+      <p class="error" id="device-error" role="alert" hidden></p>
+      <p>승인 요청 버튼은 요청만 보냅니다. 이 승인은 자료실 서버의 등록 기록이며 반 엔진의 기기 판정과는 별개입니다.</p>
+      <p id="install-status">브라우저에서 실행 중입니다. 앱으로 설치해도 기기 승인이 확인되는 것은 아닙니다.</p>
+    </section>
 
     <section class="panel" aria-labelledby="auth-title">
       <h2 id="auth-title">로그인</h2>
@@ -113,8 +130,11 @@
       NOTE_ID_TAKEN: '같은 ID의 메모가 이미 있습니다.',
       INVALID_TITLE: '제목은 1~200자로 적어 주세요.',
       INVALID_BODY: '내용은 5000자 이하로 적어 주세요.',
+      DEVICE_NOT_APPROVED: '이 기기는 아직 승인되지 않았습니다.',
     };
     let currentUser = null;
+    let deviceStatus = 'none';
+    let deviceRequestId = '';
     let editingId = null;
     let loadId = 0;
 
@@ -206,6 +226,10 @@
 
     const loadNotes = async () => {
       const current = ++loadId;
+      if (currentUser && deviceStatus !== 'approved') {
+        showMessage('서버가 이 기기를 승인된 기기로 확인하면 자료가 보입니다.');
+        return;
+      }
       if (!currentUser) {
         showMessage('로그인하면 자료가 보입니다.');
         return;
@@ -220,14 +244,50 @@
       }
     };
 
+    const deviceText = $('#device-status');
+    const deviceControls = $('#device-controls');
+    const deviceRequest = $('#device-request');
+    const deviceRefresh = $('#device-refresh');
+    const deviceError = $('#device-error');
+
+    // 승인 표시는 서버가 돌려준 상태로만 정합니다. 버튼을 눌렀다는 사실로 바꾸지 않습니다.
+    function renderDevice() {
+      const code = deviceRequestId ? ` 요청 번호: ${deviceRequestId}` : '';
+      const texts = {
+        none: '이 기기는 아직 승인을 요청하지 않았습니다.',
+        pending: `승인 대기 중입니다.${code}`,
+        approved: '승인됨: 서버가 이 기기를 등록 기기로 확인했습니다.',
+        revoked: `승인이 취소된 기기입니다.${code}`,
+        unknown: '기기 승인 상태를 확인하지 못했습니다. 자료를 보여 주지 않습니다.',
+      };
+      deviceText.textContent = currentUser ? (texts[deviceStatus] ?? texts.unknown) : '로그인하면 이 기기의 승인 상태를 서버에서 확인합니다.';
+      deviceControls.hidden = !currentUser || deviceStatus === 'approved';
+      deviceRequest.hidden = deviceStatus !== 'none';
+      editor.hidden = !(currentUser && deviceStatus === 'approved');
+    }
+
+    async function refreshDevice() {
+      deviceStatus = 'none';
+      deviceRequestId = '';
+      showText(deviceError, '');
+      if (currentUser) {
+        const response = await send('/api/device/status').catch(() => null);
+        const result = response?.ok ? await response.json().catch(() => null) : null;
+        deviceStatus = result?.status ?? 'unknown';
+        deviceRequestId = result?.requestId ?? '';
+      }
+      renderDevice();
+      await loadNotes();
+    }
+
     function render(user) {
       currentUser = user;
       form.hidden = Boolean(user);
       signedIn.hidden = !user;
-      editor.hidden = !user;
+      editor.hidden = true;
       signedInText.textContent = user ? `${user.email || '이'} 계정으로 로그인되어 있습니다.` : '';
       if (!user) resetEditor();
-      loadNotes();
+      refreshDevice();
     }
 
     form.addEventListener('submit', async event => {
@@ -292,7 +352,35 @@
       showText(noteError, '');
     });
 
+    deviceRequest.addEventListener('click', async () => {
+      showText(deviceError, '');
+      deviceRequest.disabled = true;
+      try {
+        const response = await send('/api/device/request', { method: 'POST' });
+        if (!response.ok) throw new Error(`승인 요청에 실패했습니다 (HTTP ${response.status}).`);
+        await refreshDevice();
+      } catch (error) {
+        showText(deviceError, error.message);
+      } finally {
+        deviceRequest.disabled = false;
+      }
+    });
+
+    deviceRefresh.addEventListener('click', () => refreshDevice());
+
     render(await checkSession());
+  </script>
+  <script>
+    // 설치 여부는 안내에만 씁니다. 기기 승인 상태를 바꾸지 않습니다.
+    if (matchMedia('(display-mode: standalone)').matches) {
+      document.querySelector('#install-status').textContent = '앱으로 실행 중입니다. 설치 여부는 기기 승인과 관계없습니다.';
+    }
+    const offlineNotice = document.querySelector('#offline-notice');
+    const showOnlineState = () => { offlineNotice.hidden = navigator.onLine; };
+    addEventListener('online', showOnlineState);
+    addEventListener('offline', showOnlineState);
+    showOnlineState();
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   </script>
 </body>
 </html>

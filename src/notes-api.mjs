@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { ACCESS_COOKIE, readCookie, sameOrigin } from './auth-session.mjs';
+import { findDevice, readDeviceToken } from './device-approval.mjs';
 import { RESOURCE_IDS } from './resource-ids.mjs';
 import { createLoginVerifier } from './verify-login.mjs';
 
@@ -29,7 +30,7 @@ export function allowMethods(request, response, methods) {
 }
 
 // 로그인이 확인되면 { userId, db }를, 아니면 응답을 보낸 뒤 null을 돌려줍니다.
-export async function requireLogin(request, response) {
+export async function requireLogin(request, response, { device = true } = {}) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) {
@@ -62,6 +63,20 @@ export async function requireLogin(request, response) {
     return null;
   }
   supabase ??= createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  // 학생 로그인은 서버의 기기 등록 기록이 승인일 때만 자료를 받습니다. 심판 토큰은 서명이 검증된 별도 경로입니다.
+  if (device && login.kind === 'student') {
+    const token = readDeviceToken(request);
+    const { data, error } = token ? await findDevice(supabase, login.userId, token) : { data: null, error: null };
+    if (error) {
+      databaseFailed(response, error);
+      return null;
+    }
+    if (data?.status !== 'approved') {
+      console.warn('notes: 거부 device_not_approved', request.method);
+      response.status(403).json({ error: 'DEVICE_NOT_APPROVED' });
+      return null;
+    }
+  }
   return { userId: login.userId, db: supabase };
 }
 
