@@ -261,7 +261,7 @@
 | 서비스 | Vercel 서버 함수 `api/restore/note.js` |
 | 경로 | `POST /api/restore/note`, 본문 `{id}` |
 | 복원 대상 | 시험 계정 B의 가상 메모 `B 시험 메모` |
-| 대상 ID | **미정** (`supabase/restore-backup.sql` 실행 결과로 확인) |
+| 대상 ID | `b4b52e9e-ce68-4470-8de8-0b6eb5156b16` (`supabase/restore-backup.sql` 실행 결과) |
 | 비공개 사본 | DB 표 `notes_backup` (RLS 켜짐, `PUBLIC`·`anon`·`authenticated` 권한 없음) |
 | 감사 기록 | DB 표 `notes_restore_audit` (서버 함수는 조회·추가만 가능) |
 
@@ -269,7 +269,46 @@
 - 사본의 ID·소유자·내용 해시(`sha256(title + 줄바꿈 + body)`)를 대조하고 대상 한 건만 씁니다. 같은 ID가 다른 사람의 메모이면 `409`로 멈춥니다. 복원 뒤 다시 읽어 세 값을 대조합니다.
 - 감사 기록을 남길 수 없으면 복원하지 않습니다. 응답·로그·감사 기록에 메모 내용을 넣지 않습니다.
 - 다시 실행하기: Supabase SQL Editor에서 `supabase/restore-backup.sql`의 `<B 이메일>`만 그 자리에서 바꿔 실행합니다. 바꾼 이메일은 파일에 저장하지 않습니다.
-- 코딩 도구의 시험은 가짜 Supabase로 한 것입니다. SQL 실행과 실제 B 계정 복원은 미실행입니다.
+- 학생이 SQL을 실행해 위 대상 ID를 확인했습니다. 코딩 도구의 경로 시험은 가짜 Supabase로 한 것이며, 실제 B 계정의 복원 결과는 기록되지 않았습니다.
+- `aleph.config.json`의 `restoreRoute`에 이 경로를 적었습니다. 판정기가 허용하는 경로가 아니므로 `allowedRoutes`에는 넣지 않았습니다.
+
+### 복구 뒤 다시 확인하는 순서
+
+저장소 루트의 Git Bash에서 위에서 아래로 실행합니다. 먼저 `H=https://choi-bujang-secret-vault-dony5.vercel.app`를 입력합니다. 이 순서는 자료를 바꾸지 않습니다.
+
+1. 정책 사본: `node scripts/policy-baseline.mjs verify`
+   정상: `검증 통과: 파일 3개 해시 일치`
+2. 1·2단계 공개 자료: `curl -s -o /dev/null -w "%{http_code}\n" $H/data.json`, `git fetch origin && git grep -lE "실습용 가상 (과제|포트폴리오|리추얼|행정) 기록" origin/main`
+   정상: `404`, 두 번째 명령은 출력 없음
+3. 공개 설정: `curl -sI $H/ | grep -i x-content-type`, `curl -s -o /dev/null -w "%{http_code}\n" $H/aleph.json`
+   정상: `nosniff`, `200`
+4. 3단계 금지 요청: `/api/notes`와 `/api/notes/<임의 UUID>`, `/api/restore/note`에 로그인 없이 요청합니다. `curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Content-Type: application/json" -d '{"title":"x","body":"y"}' $H/api/notes`처럼 메서드와 주소만 바꿉니다.
+   정상: 모두 `401`
+5. 5단계 원본 직접 요청: `curl -s -H "apikey: <공개 키>" https://xvttauolkmecdscuthnb.supabase.co/rest/v1/notes`. 표 이름을 `notes_backup`, `notes_restore_audit`로 바꿔 반복합니다. 서버 전용 키는 넣지 않습니다.
+   정상: 세 표 모두 `permission denied`
+6. 6·7·8·9단계 가상 요청: `npm run decider:test`, `npm run fixture:7`, `npm run detect:test`
+   정상: `통과` 4줄, `정상 사건: allow`와 `복합 이상 사건: step_up`, `통과` 6줄
+7. 화면 확인(학생 계정으로 직접): A로 로그인해 메모를 추가·수정·삭제합니다. B 창의 주소창에 `$H/api/notes/<A 메모 id>`를 넣습니다. B 창에서 대상 메모를 복원하고, A 창에서 같은 복원 요청을 보냅니다.
+   정상: A 작업이 반영되고, B 창은 `NOTE_NOT_FOUND`, B 복원은 `200`, A 복원은 `404`입니다.
+
+### 복구 뒤 확인 기록
+
+| 항목 | 결과 | 실행 |
+| --- | --- | --- |
+| 정책 사본 검증 | 파일 3개 해시 일치 | 코딩 도구, 2026-11-09, 커밋 `8c4c0bd` |
+| `/data.json`, 최신 저장소의 메모 문장 | `404`, 0개 파일 | 코딩 도구, 2026-11-09 |
+| 첫 화면 보안 헤더, `/aleph.json`, 화면 키 흔적 | `nosniff`, `200`, 0줄 | 코딩 도구, 2026-11-09 |
+| 무로그인 `GET`·`POST /api/notes`, `GET`·`PUT`·`DELETE /api/notes/:id`, `POST /api/restore/note`, 가짜 토큰 목록 | 모두 `401` | 코딩 도구, 2026-11-09 |
+| 공개 키로 `notes`·`notes_backup`·`notes_restore_audit` 직접 요청 | 모두 `401`, `permission denied` | 코딩 도구, 2026-11-09 |
+| `decider:test`, `fixture:7`, `detect:test` (가상) | 통과 4건, `allow`·`step_up`, 통과 6건 | 코딩 도구, 2026-11-09 |
+| `/api/instructor`, `/api/admin` 직접 요청 | `404` | 코딩 도구, 2026-11-09 |
+| A의 메모 추가·수정·삭제 | 미실행 | 학생 계정 필요 |
+| B의 A 메모 요청 거부 | 미실행 | 학생 계정 필요 |
+| B의 대상 메모 복원, A의 복원 요청 거부 | 미실행 | 학생 계정 필요 |
+| 실제 DB의 정책·권한 조회 | 미실행 | Supabase SQL Editor 필요 |
+| 미등록 기기 공격, 실제 다시 로그인, 실제 접속 회수 | 미실행 | 심판 또는 운영 엔진 필요 |
+
+위 결과는 자기 점검이며 심판 판정이 아닙니다. 가상 요청 결과는 실제 접속의 증거가 아닙니다.
 
 ### 10단계 남은 약점
 

@@ -97,6 +97,13 @@ async function loginChecks(app, step, config) {
   // 정상 A 요청에는 학생 계정의 로그인이 필요해 이 자동 점검에서 보내지 않습니다.
   results.push({ attackId: 'normal_a_note_crud', expected: 'A 로그인 뒤 메모 추가·수정·삭제가 되고 지운 뒤 GET은 404',
     observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. 화면에서 직접 확인' });
+  if (step >= 10) {
+    const restore = await anonymousRequest(app, '/api/restore/note', { method: 'POST' });
+    results.push({ attackId: 'anonymous_note_restore', expected: '무로그인 POST /api/restore/note 요청이 자료 없이 401로 거부됨',
+      observed: `무로그인 POST /api/restore/note 요청: HTTP ${restore.status}, 자료 ${restore.returnedNotes ? '포함' : '없음'}, 가상 메모 문장 ${restore.noteCount}건` });
+    results.push({ attackId: 'owner_note_restore', expected: 'B가 대상 메모 한 건을 복원하면 ID·소유자·내용 해시가 사본과 같고 A의 요청은 404',
+      observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. B·A 로그인 창에서 직접 확인' });
+  }
   if (step >= 9) {
     results.push({ attackId: 'burst_read_live_revocation', expected: '10분 안 121건 이상 조회한 사용자의 접속이 실제로 회수됨',
       observed: '미실행: 운영 반 엔진의 사건 전달과 회수 집행 경로가 저장소에 없음. 가상 사건은 npm run detect:test로 연습' });
@@ -127,7 +134,7 @@ async function loginChecks(app, step, config) {
 }
 
 export async function runAttackChecks(config) {
-  if (!Number.isInteger(config.step) || config.step < 1 || config.step > 9) {
+  if (!Number.isInteger(config.step) || config.step < 1 || config.step > 10) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   const app = appUrl(config);
