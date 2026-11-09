@@ -69,7 +69,7 @@
 
 - `/` 화면은 Supabase Auth 이메일·비밀번호 로그인·로그아웃을 공식 SDK(`@supabase/supabase-js`의 `signInWithPassword`·`signOut`)로 처리했습니다. 3단계 당시 화면 코드에는 공개용 Project URL과 publishable key만 들어 있었고, 5단계에서 로그인을 서버 함수로 옮기며 화면에서 지웠습니다. 로그인에 실패하면 이유를 화면에 보여 줍니다.
 - 자료 API는 시작 틀의 `src/verify-login.mjs`로 `Authorization: Bearer` 토큰을 검사합니다. 토큰이 없거나 검사에 실패하면 자료 없이 `401 LOGIN_REQUIRED`를 돌려줍니다. 브라우저가 보낸 `userId`·`role`·`owner_id`는 읽지 않습니다. 검사에 쓴 발급자 정보는 `aleph.config.json`의 `identityProvider`에 있습니다.
-- 로그인한 사용자는 화면에서 가상 메모를 추가·수정·삭제합니다. 경로는 `aleph.config.json`의 `allowedRoutes`와 같습니다.
+- 로그인한 사용자는 화면에서 가상 메모를 추가·수정·삭제합니다. 경로는 아래 표와 같습니다. 8단계부터 `aleph.config.json`의 `allowedRoutes`에는 판정기가 허용하는 경로만 적습니다.
 
 | 경로 | 동작 |
 | --- | --- |
@@ -190,6 +190,45 @@
 - 출처가 불명확하거나 값이 빠진 입력은 정상으로 치지 않고 `step_up`으로 보냅니다.
 - 사건 종류 목록이 계약에 없어 `kind`를 가리지 않고 최근 사건을 모두 셉니다.
 - `approved`, `step_up_required` 이유 코드가 운영 등록부에 있는지는 이 저장소에서 확인하지 못했습니다.
+
+## 8단계: 자료마다 갈 수 있는 구역을 나눕니다
+
+### 자원 ID
+
+`src/resource-ids.mjs`에 메모 `vault.note`, 강사 공지 `vault.instructor_notice`를 정했습니다. 메모 API의 모든 응답에는 서버가 `X-Resource-Id: vault.note`를 붙입니다. 브라우저가 보낸 머리글이나 쿼리로는 바뀌지 않습니다. 강사 공지는 아직 자료와 주소가 없어 ID만 정해 두었습니다.
+
+### 판정기 구역 규칙
+
+`src/decider.mjs`는 기기 규칙 다음, 추가 확인 규칙 앞에서 서비스와 정확한 경로 모양을 확인합니다. 경로는 연습 요청의 `/notes/...`와 `/api/notes/...` 표기를 모두 받습니다.
+
+| 구역 | 판정 | `ruleIds` |
+| --- | --- | --- |
+| 메모 `GET /notes/:id` | 기존 규칙으로 이어져 허용 또는 추가 확인 | `device_registered`, `step_up_required` |
+| 메모 `PUT`·`DELETE /notes/:id` | 기존 규칙으로 이어져 거부 | `starter.deny` |
+| 메모 ID 없는 목록 | 거부 | `zone_note_list_denied` |
+| 공지 `GET /notices`, `GET /notices/:id` | 기존 규칙으로 이어져 허용 또는 추가 확인 | `device_registered`, `step_up_required` |
+| 공지 쓰기 | 누구에게나 거부 | `zone_notice_read_only` |
+| `instructor`로 시작하는 서비스 | 모두 거부 | `zone_instructor_denied` |
+| 쿼리가 있거나 길이를 알 수 없는 요청 | 거부 | `zone_query_denied` |
+| 그 밖의 서비스·경로, 경로와 모양 불일치 | 거부 | `zone_unknown_route` |
+
+판정기는 메모 ID 형식을 좁히지 않고 메모 주인도 비교하지 않습니다. 강사의 공지 수정은 판정기 요청에 역할이 없으므로 서버의 관리 경로에서 처리해야 합니다.
+
+### 자료 API 대조
+
+메모의 모든 경로는 서버가 토큰에서 확인한 사용자 ID로 `owner_id`를 비교합니다. 요청 본문과 쿼리의 `role`·`userId`·`owner_id`는 읽지 않습니다. 남의 메모와 없는 메모는 같은 `404`이고, 서버 로그에는 `not_owner_or_missing`, `invalid_note_id` 같은 사유와 메서드만 남습니다.
+
+- 다시 실행하기: `npm run decider:test`, `npm run fixture:7`. 구역 규칙 38건과 메뉴 우회 API 요청은 코딩 도구가 임시 스크립트와 가짜 Supabase로 시험했습니다. 실제 계정 시험이나 심판 판정이 아닙니다.
+- 자기 점검 `npm run bundle`은 강사·공지 구역에 무로그인 직접 요청을 실제로 보내 결과를 기록합니다.
+
+### 8단계 남은 약점
+
+- 저장된 강사 권한은 없습니다. 역할 표나 강사 칸이 없어 강사 권한 대조는 구현하지 않았습니다. 강사·공지 서버 함수도 없어 해당 주소는 `404`입니다.
+- `allowedRoutes`의 `GET /api/notices`, `GET /api/notices/:id`는 판정기가 허용하는 모양이며, 아직 서버 함수가 없습니다.
+- 공지 서비스 이름 `notices`와 강사 서비스 접두사 `instructor`는 계약에 없어 연습용으로 정했습니다.
+- 구역 거부용 이유 코드를 몰라 기존 `starter_not_ready`를 쓰고, 막은 구역은 `ruleIds`로 구별합니다.
+- 경로 모양이 `GET /notes/:id`이면 실제 경로 `/notes/export`의 `export`는 자료 ID로 봅니다.
+- 화면은 `GET`·`POST /api/notes`를 씁니다. 판정기를 실제 경로에 연결하면 구역 규칙이 이 요청을 거부합니다. 지금은 자료 API가 판정기를 부르지 않습니다.
 
 ## 보너스 xdr-01: 무차별 로그인 공격을 잡아 냅니다
 

@@ -97,6 +97,13 @@ async function loginChecks(app, step, config) {
   // 정상 A 요청에는 학생 계정의 로그인이 필요해 이 자동 점검에서 보내지 않습니다.
   results.push({ attackId: 'normal_a_note_crud', expected: 'A 로그인 뒤 메모 추가·수정·삭제가 되고 지운 뒤 GET은 404',
     observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. 화면에서 직접 확인' });
+  if (step >= 8) {
+    for (const [attackId, method, path] of [['instructor_zone_direct_read', 'GET', '/api/instructor'], ['notice_zone_direct_write', 'POST', '/api/notices']]) {
+      const result = await anonymousRequest(app, path, { method });
+      results.push({ attackId, expected: `무로그인 ${method} ${path} 직접 요청에서 자료가 나오지 않음`,
+        observed: `무로그인 ${method} ${path} 요청: HTTP ${result.status}, 자료 ${result.returnedNotes ? '포함' : '없음'}, 가상 메모 문장 ${result.noteCount}건` });
+    }
+  }
   if (step >= 7) {
     results.push({ attackId: 'step_up_blocks_before_relogin', expected: '평소와 다른 접속은 다시 로그인 전까지 실제 자료를 받지 못함',
       observed: '미실행: 재로그인 시각 확인 계약과 엔진 연결이 저장소에 없음. 가상 요청은 npm run fixture:7로 연습' });
@@ -116,7 +123,7 @@ async function loginChecks(app, step, config) {
 }
 
 export async function runAttackChecks(config) {
-  if (!Number.isInteger(config.step) || config.step < 1 || config.step > 7) {
+  if (!Number.isInteger(config.step) || config.step < 1 || config.step > 8) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   const app = appUrl(config);

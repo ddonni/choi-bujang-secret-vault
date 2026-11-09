@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { ACCESS_COOKIE, readCookie, sameOrigin } from './auth-session.mjs';
+import { RESOURCE_IDS } from './resource-ids.mjs';
 import { createLoginVerifier } from './verify-login.mjs';
 
 const config = JSON.parse(readFileSync(new URL('../aleph.config.json', import.meta.url), 'utf8'));
@@ -20,6 +21,7 @@ export const newNoteId = () => randomUUID();
 
 export function allowMethods(request, response, methods) {
   response.setHeader('Cache-Control', 'no-store');
+  response.setHeader('X-Resource-Id', RESOURCE_IDS.note);
   if (methods.includes(request.method)) return true;
   response.setHeader('Allow', methods.join(', '));
   response.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
@@ -75,6 +77,13 @@ export function readNoteInput(request) {
   if (typeof title !== 'string' || !title.trim() || title.length > MAX_TITLE) return { error: 'INVALID_TITLE' };
   if (typeof body !== 'string' || body.length > MAX_BODY) return { error: 'INVALID_BODY' };
   return { id: id?.toLowerCase(), title: title.trim(), body };
+}
+
+// 8단계: 남의 메모와 없는 메모는 응답을 똑같이 404로 두고, 사유 코드만 서버 로그에 남깁니다.
+// 메모 ID·사용자 ID·토큰은 기록하지 않습니다.
+export function denyNote(request, response, reason) {
+  console.warn('notes: 거부', reason, request.method);
+  response.status(404).json({ error: 'NOTE_NOT_FOUND' });
 }
 
 export function databaseFailed(response, error) {

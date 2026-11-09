@@ -1,7 +1,14 @@
 // ALEPH SDP 엔진이 확인한 요청만 받는 학생 판정기 시작점입니다.
 // 6단계부터 규칙을 하나씩 추가합니다. 이 기본 응답은 모든 요청을 거부합니다.
 // 요청 본문의 userId, role, 기기 키, 토큰을 별도로 믿거나 저장하지 마세요.
-export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'step_up_required']);
+const ZONE_RULES = Object.freeze({
+  unknownRoute: 'zone_unknown_route',
+  queryDenied: 'zone_query_denied',
+  noteList: 'zone_note_list_denied',
+  noticeReadOnly: 'zone_notice_read_only',
+  instructor: 'zone_instructor_denied',
+});
+export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'step_up_required', ...Object.values(ZONE_RULES)]);
 const DEVICE_RULE = 'device_registered';
 
 const deviceDecision = (request, decision, reasonCode) => ({
@@ -93,9 +100,49 @@ function isFreshStepUp(stepUp) {
     && stepUp.authAgeSeconds >= 0 && stepUp.authAgeSeconds <= MAX_STEP_UP_AGE_SECONDS;
 }
 
+// 8단계 구역 규칙. 서비스와 정확한 경로 모양이 맞아야 하며, 알 수 없는 경로는 거부합니다.
+// 메모 주인 비교는 판정기가 아니라 서버 API가 합니다. 메모 ID 형식도 여기서 좁히지 않습니다.
+// 강사의 공지 수정은 역할을 아는 서버의 관리 경로에서 처리합니다(판정기 요청에는 역할이 없습니다).
+const ROUTE_SHAPE = /^(GET|POST|PUT|PATCH|DELETE) (\/[^\s?#]*)$/u;
+const NOTE_ID_ROUTE = '/notes/:id';
+const NOTE_LIST_ROUTE = '/notes';
+const NOTE_ID_METHODS = Object.freeze(['GET', 'PUT', 'DELETE']);
+const NOTICE_ROUTES = Object.freeze(['/notices', '/notices/:id']);
+const PATH_TRICK = /%(?:2f|5c|2e)|\\/iu;
+
+function pathFitsShape(shape, path) {
+  if (typeof path !== 'string' || path.includes('?') || path.includes('#')) return false;
+  const expected = shape.split('/');
+  const actual = path.split('/');
+  return expected.length === actual.length && expected.every((part, index) => (part === ':id'
+    ? actual[index] !== '' && actual[index] !== '.' && actual[index] !== '..' && !PATH_TRICK.test(actual[index])
+    : part === actual[index]));
+}
+
+// 거부할 구역 규칙 이름을 돌려줍니다. 통과하면 null이고, 이어서 기존 규칙이 판정합니다.
+function zoneDenial(request) {
+  const { service, method, route, path, queryLength } = request;
+  if (typeof service === 'string' && service.startsWith('instructor')) return ZONE_RULES.instructor;
+  if (service === 'notices' && method !== 'GET') return ZONE_RULES.noticeReadOnly;
+  const parsed = typeof route === 'string' ? ROUTE_SHAPE.exec(route) : null;
+  if (!parsed || parsed[1] !== method || !pathFitsShape(parsed[2], path)) return ZONE_RULES.unknownRoute;
+  // 쿼리로 기능을 고르지 않습니다. 길이를 알 수 없는 요청도 통과시키지 않습니다.
+  if (queryLength !== 0) return ZONE_RULES.queryDenied;
+  const shape = parsed[2].replace(/^\/api(?=\/)/u, '');
+  if (service === 'notes' && shape === NOTE_LIST_ROUTE) return ZONE_RULES.noteList;
+  if (service === 'notes' && shape === NOTE_ID_ROUTE && NOTE_ID_METHODS.includes(method)) return null;
+  if (service === 'notices' && NOTICE_ROUTES.includes(shape)) return null;
+  return ZONE_RULES.unknownRoute;
+}
+
 export async function decide(request) {
   // 6단계: 엔진이 확인한 deviceRegistered가 정확히 true일 때만 등록 기기로 봅니다.
   if (request.deviceRegistered !== true) return deviceDecision(request, 'deny', 'device_not_registered');
+  const zoneRule = zoneDenial(request);
+  if (zoneRule) {
+    // 새 이유 코드는 운영 등록이 필요해 기존 코드를 쓰고, 막은 구역은 ruleIds로 구별합니다.
+    return { schema: 'aleph.decision.v1', requestId: request.requestId, decision: 'deny', reasonCode: 'starter_not_ready', ruleIds: [zoneRule] };
+  }
   if (request.method === 'GET' && needsStepUp(readAccessContext(request))) {
     return isFreshStepUp(request.stepUp)
       ? stepUpDecision(request, 'allow', 'approved')
