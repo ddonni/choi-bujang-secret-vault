@@ -130,6 +130,40 @@
 - Supabase Auth의 공개 가입, `POST`의 남의 `id`에 대한 `409` 응답, 옛 커밋 `89a0dfc`의 과거 노출은 4단계와 같이 남아 있습니다.
 - 저장소를 Public으로 바꾸면서 2단계 이후 커밋의 작성자 이메일도 공개됐습니다. 이후 커밋은 GitHub `noreply` 주소로 기록하며, 이미 남은 기록은 고쳐 쓰지 않았습니다.
 
+## 6단계: 등록한 기기만 자료실에 들어옵니다
+
+`src/decider.mjs`의 `device_registered` 규칙은 엔진이 확인한 `request.deviceRegistered`가 정확히 `true`일 때만 등록 기기로 봅니다. 등록 기기의 `GET`은 `allow`이고, 미등록이거나 값이 없으면 `deny`·`device_not_registered`입니다. 등록 기기의 쓰기 요청은 기존 `starter.deny`로 거부됩니다. 이번 과정에는 따로 설치할 접속 프로그램이 없습니다.
+
+### 판정기 확인 순서
+
+저장소 루트의 Git Bash에서 실행합니다.
+
+1. 판정기 연습을 실행합니다.
+
+   ```bash
+   npm run decider:test
+   ```
+
+   정상: `통과 · 등록 기기의 정상 요청`과 `통과 · 미등록 기기의 가상 요청`이 모두 나옵니다.
+2. 같은 가상 요청의 실제 응답을 봅니다. 1번은 통과 여부만 출력하므로 결정과 이유 코드는 이 명령으로 확인합니다.
+
+   ```bash
+   node --input-type=module -e 'import { decide } from "./src/decider.mjs"; import { fixtureRequests } from "./scripts/fixture-7.mjs"; const { normal } = fixtureRequests(); for (const [name, request] of [["등록 기기", normal], ["미등록 기기", { ...normal, deviceRegistered: false }]]) { const r = await decide(request); console.log(`${name}: ${r.decision} · ${r.reasonCode}`); }'
+   ```
+
+   정상: `등록 기기: allow · approved`와 `미등록 기기: deny · device_not_registered`가 나옵니다.
+
+두 명령은 로컬 가상 요청 연습이며 실제 접속이나 심판 판정의 증거가 아닙니다. 미등록 기기 공격은 심판이 확인합니다.
+
+자기 점검 `npm run bundle`에서 미등록 기기 항목은 미실행으로 남습니다. 무로그인·가짜 토큰 요청과 공개 키의 원본 API 직접 요청은 5단계와 같이 실제로 보냅니다.
+
+### 6단계 남은 약점
+
+- 판정기는 `GET`만 허용하므로, 실제 경로에 연결하면 등록 기기의 메모 추가·수정·삭제는 `starter.deny`로 거부됩니다.
+- 허용 이유 코드 `approved`는 계약 문서의 예시입니다. 운영 등록부의 `allowedReasonCodes`는 이 저장소에 없어 등록 여부를 확인하지 못했습니다.
+- `npm run fixture:7`은 아직 실패합니다. 복합 이상 요청을 `step_up`으로 돌리는 규칙이 없기 때문입니다.
+- `/` 화면과 `/api/notes`는 이 판정기를 부르지 않습니다. 판정기는 반 엔진이 호출하는 경로이며, 그 연결은 이 저장소에서 확인하지 못했습니다.
+
 ## 보너스 xdr-01: 무차별 로그인 공격을 잡아 냅니다
 
 `xdr/fixtures/brute-force.json`(수업용 Wazuh 모양 경보 28건, 원본은 고치지 않음)을 읽어 판단합니다.
