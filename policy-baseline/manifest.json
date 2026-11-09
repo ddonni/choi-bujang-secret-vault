@@ -1,0 +1,28 @@
+{
+  "schema": "student.policy-baseline.v1",
+  "createdAt": "2026-11-09T03:14:46.773Z",
+  "sourceCommit": "469716597ae120c9ee7759157277621d3f4315ca",
+  "files": [
+    {
+      "name": "decider.mjs",
+      "source": "src/decider.mjs",
+      "kind": "판정기 규칙",
+      "sha256": "2617d70edf359817ec9edb0c6399d1a89bd7b099f331b9f28906eed4fcdb850b",
+      "lines": 160
+    },
+    {
+      "name": "allowed-routes.json",
+      "source": "aleph.config.json",
+      "kind": "allowedRoutes",
+      "sha256": "ff963b3d24ef6e5d9fbf07dd16d9641fa2084266cdf1174fec29b6d37063c771",
+      "lines": 5
+    },
+    {
+      "name": "db-access-policy.sql",
+      "source": "supabase/db-access-policy.sql",
+      "kind": "DB 접근 정책(목표 상태, 실제 DB 조회본 아님)",
+      "sha256": "424579d6479b47d285aaab8ec425de51738295068b00b7d6e2af427b7538715a",
+      "lines": 24
+    }
+  ]
+}
