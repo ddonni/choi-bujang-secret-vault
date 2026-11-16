@@ -25,37 +25,57 @@ const caseIdOf = attackId => attackId ?? null;
 const caseHeaders = caseId => (caseId ? { 'X-Request-Id': caseId } : {});
 const serverIdOf = response => response.headers.get('x-vercel-id') ?? response.headers.get('sb-request-id') ?? '없음';
 
+// 요청이 연결 실패·시간 초과로 HTTP 응답을 받지 못하면 상태를 지어내지 않고 실패로 표시합니다.
+const failedRequest = (request, error) => ({ failed: true, request, reason: error?.name ?? 'Error' });
+
 async function anonymousGet(app, path, attackId) {
   const caseId = caseIdOf(attackId);
-  const response = await fetch(new URL(path, app), {
-    headers: caseHeaders(caseId),
-    redirect: 'error', signal: AbortSignal.timeout(10000),
-  });
-  const text = await response.text();
-  return { status: response.status, request: `GET ${new URL(path, app).pathname}`, caseId, serverId: serverIdOf(response),
+  const request = `GET ${new URL(path, app).pathname}`;
+  let response;
+  let text;
+  try {
+    response = await fetch(new URL(path, app), {
+      headers: caseHeaders(caseId),
+      redirect: 'error', signal: AbortSignal.timeout(10000),
+    });
+    text = await response.text();
+  } catch (error) {
+    return failedRequest(request, error);
+  }
+  return { status: response.status, request, caseId, serverId: serverIdOf(response),
     noteCount: text.match(NOTE_SENTENCE)?.length ?? 0 };
 }
 
 // 보낸 요청의 결과는 실제로 보낸 방식·경로와 받은 HTTP 상태만 적습니다. 실행마다 바뀌는 값은 넣지 않습니다.
-const sentObserved = result => `${result.request} → HTTP ${result.status}`;
+// HTTP 응답을 받지 못한 요청은 미실행으로 적습니다.
+const sentObserved = result => (result.failed
+  ? `not_run: ${result.request} 요청에 HTTP 응답을 받지 못함(${result.reason})`
+  : `${result.request} → HTTP ${result.status}`);
 // 보내지 않은 요청은 어떤 요청을 보내지 않았는지 적고 미실행으로 둡니다.
 const notRunOf = (method, path) => `not_run: ${method} ${path} 요청을 보내지 않음(제출 점검은 쓰기 요청을 보내지 않음)`;
 
 async function anonymousRequest(app, path, { method = 'GET', authorization, attackId } = {}) {
   if (!SAFE_METHODS.has(method)) return { notRun: true };
   const caseId = caseIdOf(attackId);
-  const response = await fetch(new URL(path, app), {
-    method,
-    headers: {
-      ...caseHeaders(caseId),
-      ...(authorization ? { Authorization: authorization } : {}),
-      ...(method === 'POST' || method === 'PUT' ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: method === 'POST' || method === 'PUT' ? JSON.stringify({ title: '점검', body: '점검' }) : undefined,
-    redirect: 'error', signal: AbortSignal.timeout(10000),
-  });
-  const text = await response.text();
-  return { status: response.status, request: `${method} ${new URL(path, app).pathname}`, caseId, serverId: serverIdOf(response), noteCount: text.match(NOTE_SENTENCE)?.length ?? 0,
+  const request = `${method} ${new URL(path, app).pathname}`;
+  let response;
+  let text;
+  try {
+    response = await fetch(new URL(path, app), {
+      method,
+      headers: {
+        ...caseHeaders(caseId),
+        ...(authorization ? { Authorization: authorization } : {}),
+        ...(method === 'POST' || method === 'PUT' ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: method === 'POST' || method === 'PUT' ? JSON.stringify({ title: '점검', body: '점검' }) : undefined,
+      redirect: 'error', signal: AbortSignal.timeout(10000),
+    });
+    text = await response.text();
+  } catch (error) {
+    return failedRequest(request, error);
+  }
+  return { status: response.status, request, caseId, serverId: serverIdOf(response), noteCount: text.match(NOTE_SENTENCE)?.length ?? 0,
     returnedNotes: /"(?:notes|title|body)"/u.test(text) };
 }
 
@@ -86,15 +106,22 @@ async function originalApiChecks(config) {
       continue;
     }
     const caseId = caseIdOf(attackId);
-    const response = await fetch(original, {
-      method,
-      headers: { ...caseHeaders(caseId), apikey: anonKey, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
-      body: method === 'POST' ? JSON.stringify({ title: '점검', body: '점검' }) : undefined,
-      redirect: 'error', signal: AbortSignal.timeout(10000),
-    });
-    await response.text();
+    const request = `${method} ${original.pathname}`;
+    let result;
+    try {
+      const response = await fetch(original, {
+        method,
+        headers: { ...caseHeaders(caseId), apikey: anonKey, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
+        body: method === 'POST' ? JSON.stringify({ title: '점검', body: '점검' }) : undefined,
+        redirect: 'error', signal: AbortSignal.timeout(10000),
+      });
+      await response.text();
+      result = { request, status: response.status };
+    } catch (error) {
+      result = failedRequest(request, error);
+    }
     results.push({ attackId, expected: `anon 키로 원본 자료 API에 직접 ${method} 요청하면 권한 없음으로 거부됨`,
-      observed: sentObserved({ request: `${method} ${original.pathname}`, status: response.status, caseId, serverId: serverIdOf(response) }) });
+      observed: sentObserved(result) });
   }
   return results;
 }
