@@ -1,6 +1,6 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
-import { randomBytes } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 const NOTE_SENTENCE = /실습용 가상 (?:과제|포트폴리오|리추얼|행정) 기록/gu;
 // 제출 점검은 격리 환경에서 돌기 때문에 GET·HEAD가 아닌 요청은 보내지 않고 미실행으로 기록합니다.
@@ -22,7 +22,7 @@ function appUrl(config) {
 }
 
 // 점검 요청마다 대조용 사례 식별자(점검 이름 + 실행마다 새 임의값)를 X-Request-Id 머리글로 보냅니다. 비밀값이 아닙니다.
-const caseIdOf = attackId => (attackId ? `${attackId}.${randomBytes(4).toString('hex')}` : null);
+const caseIdOf = attackId => (attackId ? `${attackId}.${randomUUID()}` : null);
 const caseHeaders = caseId => (caseId ? { 'X-Request-Id': caseId } : {});
 const serverIdOf = response => response.headers.get('x-vercel-id') ?? response.headers.get('sb-request-id') ?? '없음';
 
