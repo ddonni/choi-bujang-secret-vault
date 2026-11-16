@@ -37,8 +37,8 @@ async function anonymousGet(app, path, attackId) {
     noteCount: text.match(NOTE_SENTENCE)?.length ?? 0 };
 }
 
-// 보낸 요청의 결과는 그 요청에 실은 사례 ID(X-Request-Id)와 실제로 받은 HTTP 상태만 적습니다.
-const sentObserved = result => `사례 ${result.caseId} · HTTP ${result.status}`;
+// 보낸 요청의 결과는 실제로 보낸 방식·경로와 받은 HTTP 상태만 적습니다. 실행마다 바뀌는 값은 넣지 않습니다.
+const sentObserved = result => `${result.request} → HTTP ${result.status}`;
 // 보내지 않은 요청은 어떤 요청을 보내지 않았는지 적고 미실행으로 둡니다.
 const notRunOf = (method, path) => `not_run: ${method} ${path} 요청을 보내지 않음(제출 점검은 쓰기 요청을 보내지 않음)`;
 
