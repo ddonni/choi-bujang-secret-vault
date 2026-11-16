@@ -61,7 +61,7 @@ async function originalApiChecks(config) {
   if (!anonKey || anonKey.startsWith('sb_secret_')) {
     return probes.map(([attackId, method]) => ({ attackId,
       expected: `anon 키로 원본 자료 API에 직접 ${method} 요청하면 권한 없음으로 거부됨`,
-      observed: '미실행: SUPABASE_PUBLISHABLE_KEY 환경변수(공개용 키)가 없어 요청하지 않음' }));
+      observed: 'not_run: SUPABASE_PUBLISHABLE_KEY 환경변수(공개용 키)가 없어 요청하지 않음' }));
   }
   const results = [];
   for (const [attackId, method] of probes) {
@@ -104,7 +104,7 @@ async function loginChecks(app, step, config) {
   }
   // 정상 A 요청에는 학생 계정의 로그인이 필요해 이 자동 점검에서 보내지 않습니다.
   results.push({ attackId: 'normal_a_note_crud', expected: 'A 로그인 뒤 메모 추가·수정·삭제가 되고 지운 뒤 GET은 404',
-    observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. 화면에서 직접 확인' });
+    observed: 'not_run: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. 화면에서 직접 확인' });
   if (step >= 12) {
     const ops = await anonymousRequest(app, '/api/ops/summary');
     results.push({ attackId: 'anonymous_ops_summary', expected: '무로그인 GET /api/ops/summary 요청이 401로 거부됨',
@@ -115,18 +115,18 @@ async function loginChecks(app, step, config) {
     results.push({ attackId: 'anonymous_device_status', expected: '무로그인 GET /api/device/status 요청이 401로 거부됨',
       observed: `무로그인 GET /api/device/status 요청: HTTP ${status.status}, 자료 ${status.returnedNotes ? '포함' : '없음'}` });
     results.push({ attackId: 'device_gate_before_approval', expected: '승인 전 기기는 자료 없이 403이고 서버가 승인한 기기만 기존 자료실이 열림',
-      observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. A·B 로그인 창에서 직접 확인' });
+      observed: 'not_run: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. A·B 로그인 창에서 직접 확인' });
   }
   if (step >= 10) {
     const restore = await anonymousRequest(app, '/api/restore/note', { method: 'POST' });
     results.push({ attackId: 'anonymous_note_restore', expected: '무로그인 POST /api/restore/note 요청이 자료 없이 401로 거부됨',
       observed: restore.notRun ? NOT_RUN_UNSAFE : `무로그인 POST /api/restore/note 요청: HTTP ${restore.status}, 자료 ${restore.returnedNotes ? '포함' : '없음'}, 가상 메모 문장 ${restore.noteCount}건` });
     results.push({ attackId: 'owner_note_restore', expected: 'B가 대상 메모 한 건을 복원하면 ID·소유자·내용 해시가 사본과 같고 A의 요청은 404',
-      observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. B·A 로그인 창에서 직접 확인' });
+      observed: 'not_run: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. B·A 로그인 창에서 직접 확인' });
   }
   if (step >= 9) {
     results.push({ attackId: 'burst_read_live_revocation', expected: '10분 안 121건 이상 조회한 사용자의 접속이 실제로 회수됨',
-      observed: '미실행: 운영 반 엔진의 사건 전달과 회수 집행 경로가 저장소에 없음. 가상 사건은 npm run detect:test로 연습' });
+      observed: 'not_run: 운영 반 엔진의 사건 전달과 회수 집행 경로가 저장소에 없음. 가상 사건은 npm run detect:test로 연습' });
   }
   if (step >= 8) {
     for (const [attackId, method, path] of [['instructor_zone_direct_read', 'GET', '/api/instructor'], ['notice_zone_direct_write', 'POST', '/api/notices']]) {
@@ -137,23 +137,23 @@ async function loginChecks(app, step, config) {
   }
   if (step >= 7) {
     results.push({ attackId: 'step_up_relogin_flow', expected: '평소와 다른 접속은 다시 로그인 전까지 실제 자료를 받지 못하고, 다시 로그인한 뒤의 새 요청은 허용됨',
-      observed: '미실행: 재로그인 시각 확인 계약과 엔진 연결이 저장소에 없음. 가상 요청은 npm run fixture:7과 npm run decider:test로 연습' });
+      observed: 'not_run: 재로그인 시각 확인 계약과 엔진 연결이 저장소에 없음. 가상 요청은 npm run fixture:7과 npm run decider:test로 연습' });
   }
   if (step >= 6) {
     results.push({ attackId: 'unregistered_device_request', expected: '미등록 기기 요청이 deny·device_not_registered로 거부됨',
-      observed: '미실행: 미등록 기기 공격은 심판이 확인함. 로컬 가상 요청은 npm run decider:test로 연습' });
+      observed: 'not_run: 미등록 기기 공격은 심판이 확인함. 로컬 가상 요청은 npm run decider:test로 연습' });
   }
   if (step >= 5) results.push(...await originalApiChecks(config));
   if (step >= 4) {
     results.push({ attackId: 'b_reads_a_note', expected: 'B 로그인으로 A 메모 GET·PUT·DELETE /api/notes/:id 요청이 404로 거부되고 A 메모는 그대로',
-      observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. B 로그인 창에서 직접 확인' });
+      observed: 'not_run: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. B 로그인 창에서 직접 확인' });
   }
   // 12단계부터 점검 상한(20개) 때문에, 사유가 같은 학생 계정 미실행 항목을 하나로 묶습니다. 미실행은 그대로입니다.
   if (step >= 12) {
     const accountIds = ['normal_a_note_crud', 'device_gate_before_approval', 'owner_note_restore', 'b_reads_a_note'];
     const kept = results.filter(item => !accountIds.includes(item.attackId));
     kept.push({ attackId: 'student_account_flows', expected: 'A 메모 추가·수정·삭제, B의 A 메모 요청 404, 승인 전 기기 403, B 복원 200·A 복원 404',
-      observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. node scripts/evidence-table.mjs에 EVIDENCE_* 환경변수를 넣어 학생이 직접 실측' });
+      observed: 'not_run: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. node scripts/evidence-table.mjs에 EVIDENCE_* 환경변수를 넣어 학생이 직접 실측' });
     return kept;
   }
   return results;
