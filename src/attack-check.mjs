@@ -37,8 +37,10 @@ async function anonymousGet(app, path, attackId) {
     noteCount: text.match(NOTE_SENTENCE)?.length ?? 0 };
 }
 
-// 결과를 그 결과를 만든 요청과 짝지어 적습니다: 실제로 보낸 방식·경로, 받은 HTTP 상태, 사례 식별자, 서버 요청 ID.
-const sentObserved = result => `${result.request} → HTTP ${result.status} · 사례 ${result.caseId} · 서버 ${result.serverId}`;
+// 보낸 요청의 결과는 그 요청에 실은 사례 ID(X-Request-Id)와 실제로 받은 HTTP 상태만 적습니다.
+const sentObserved = result => `사례 ${result.caseId} · HTTP ${result.status}`;
+// 보내지 않은 요청은 어떤 요청을 보내지 않았는지 적고 미실행으로 둡니다.
+const notRunOf = (method, path) => `not_run: ${method} ${path} 요청을 보내지 않음(제출 점검은 쓰기 요청을 보내지 않음)`;
 
 async function anonymousRequest(app, path, { method = 'GET', authorization, attackId } = {}) {
   if (!SAFE_METHODS.has(method)) return { notRun: true };
@@ -114,7 +116,7 @@ async function loginChecks(app, step, config) {
     const result = await anonymousRequest(app, path, { method, authorization, attackId });
     const who = authorization ? '가짜 토큰' : '무로그인';
     results.push({ attackId, expected: `${who} ${method} ${path.replace(PROBE_ID, ':id')} 요청이 자료 없이 401로 거부됨`,
-      observed: result.notRun ? NOT_RUN_UNSAFE : sentObserved(result) });
+      observed: result.notRun ? notRunOf(method, path.replace(PROBE_ID, ':id')) : sentObserved(result) });
   }
   // 정상 A 요청에는 학생 계정의 로그인이 필요해 이 자동 점검에서 보내지 않습니다.
   results.push({ attackId: 'normal_a_note_crud', expected: 'A 로그인 뒤 메모 추가·수정·삭제가 되고 지운 뒤 GET은 404',
