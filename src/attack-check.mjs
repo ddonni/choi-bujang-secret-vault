@@ -1,6 +1,9 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 const NOTE_SENTENCE = /실습용 가상 (?:과제|포트폴리오|리추얼|행정) 기록/gu;
+// 제출 점검은 격리 환경에서 돌기 때문에 GET·HEAD가 아닌 요청은 보내지 않고 미실행으로 기록합니다.
+const SAFE_METHODS = new Set(['GET', 'HEAD']);
+const NOT_RUN_UNSAFE = 'not_run: 제출 점검은 GET·HEAD가 아닌 요청을 보내지 않음';
 
 function appUrl(config) {
   let app;
@@ -25,6 +28,7 @@ async function anonymousGet(app, path) {
 }
 
 async function anonymousRequest(app, path, { method = 'GET', authorization } = {}) {
+  if (!SAFE_METHODS.has(method)) return { notRun: true };
   const response = await fetch(new URL(path, app), {
     method,
     headers: {
@@ -61,6 +65,10 @@ async function originalApiChecks(config) {
   }
   const results = [];
   for (const [attackId, method] of probes) {
+    if (!SAFE_METHODS.has(method)) {
+      results.push({ attackId, expected: `anon 키로 원본 자료 API에 직접 ${method} 요청하면 권한 없음으로 거부됨`, observed: NOT_RUN_UNSAFE });
+      continue;
+    }
     const response = await fetch(original, {
       method,
       headers: { apikey: anonKey, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
@@ -92,7 +100,7 @@ async function loginChecks(app, step, config) {
     const result = await anonymousRequest(app, path, { method, authorization });
     const who = authorization ? '가짜 토큰' : '무로그인';
     results.push({ attackId, expected: `${who} ${method} ${path.replace(PROBE_ID, ':id')} 요청이 자료 없이 401로 거부됨`,
-      observed: `${who} ${method} 요청: HTTP ${result.status}, 자료 ${result.returnedNotes ? '포함' : '없음'}, 가상 메모 문장 ${result.noteCount}건` });
+      observed: result.notRun ? NOT_RUN_UNSAFE : `${who} ${method} 요청: HTTP ${result.status}, 자료 ${result.returnedNotes ? '포함' : '없음'}, 가상 메모 문장 ${result.noteCount}건` });
   }
   // 정상 A 요청에는 학생 계정의 로그인이 필요해 이 자동 점검에서 보내지 않습니다.
   results.push({ attackId: 'normal_a_note_crud', expected: 'A 로그인 뒤 메모 추가·수정·삭제가 되고 지운 뒤 GET은 404',
@@ -112,7 +120,7 @@ async function loginChecks(app, step, config) {
   if (step >= 10) {
     const restore = await anonymousRequest(app, '/api/restore/note', { method: 'POST' });
     results.push({ attackId: 'anonymous_note_restore', expected: '무로그인 POST /api/restore/note 요청이 자료 없이 401로 거부됨',
-      observed: `무로그인 POST /api/restore/note 요청: HTTP ${restore.status}, 자료 ${restore.returnedNotes ? '포함' : '없음'}, 가상 메모 문장 ${restore.noteCount}건` });
+      observed: restore.notRun ? NOT_RUN_UNSAFE : `무로그인 POST /api/restore/note 요청: HTTP ${restore.status}, 자료 ${restore.returnedNotes ? '포함' : '없음'}, 가상 메모 문장 ${restore.noteCount}건` });
     results.push({ attackId: 'owner_note_restore', expected: 'B가 대상 메모 한 건을 복원하면 ID·소유자·내용 해시가 사본과 같고 A의 요청은 404',
       observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. B·A 로그인 창에서 직접 확인' });
   }
@@ -124,7 +132,7 @@ async function loginChecks(app, step, config) {
     for (const [attackId, method, path] of [['instructor_zone_direct_read', 'GET', '/api/instructor'], ['notice_zone_direct_write', 'POST', '/api/notices']]) {
       const result = await anonymousRequest(app, path, { method });
       results.push({ attackId, expected: `무로그인 ${method} ${path} 직접 요청에서 자료가 나오지 않음`,
-        observed: `무로그인 ${method} ${path} 요청: HTTP ${result.status}, 자료 ${result.returnedNotes ? '포함' : '없음'}, 가상 메모 문장 ${result.noteCount}건` });
+        observed: result.notRun ? NOT_RUN_UNSAFE : `무로그인 ${method} ${path} 요청: HTTP ${result.status}, 자료 ${result.returnedNotes ? '포함' : '없음'}, 가상 메모 문장 ${result.noteCount}건` });
     }
   }
   if (step >= 7) {
