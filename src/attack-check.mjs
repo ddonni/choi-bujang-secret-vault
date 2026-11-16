@@ -1,5 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
+import { randomBytes } from 'node:crypto';
+
 const NOTE_SENTENCE = /실습용 가상 (?:과제|포트폴리오|리추얼|행정) 기록/gu;
 // 제출 점검은 격리 환경에서 돌기 때문에 GET·HEAD가 아닌 요청은 보내지 않고 미실행으로 기록합니다.
 const SAFE_METHODS = new Set(['GET', 'HEAD']);
@@ -19,22 +21,32 @@ function appUrl(config) {
   return app;
 }
 
-async function anonymousGet(app, path) {
+// 점검 요청마다 대조용 사례 식별자(점검 이름 + 실행마다 새 임의값)를 X-Request-Id 머리글로 보냅니다. 비밀값이 아닙니다.
+const caseIdOf = attackId => (attackId ? `${attackId}.${randomBytes(4).toString('hex')}` : null);
+const caseHeaders = caseId => (caseId ? { 'X-Request-Id': caseId } : {});
+const serverIdOf = response => response.headers.get('x-vercel-id') ?? response.headers.get('sb-request-id') ?? '없음';
+
+async function anonymousGet(app, path, attackId) {
+  const caseId = caseIdOf(attackId);
   const response = await fetch(new URL(path, app), {
+    headers: caseHeaders(caseId),
     redirect: 'error', signal: AbortSignal.timeout(10000),
   });
   const text = await response.text();
-  return { status: response.status, request: `GET ${new URL(path, app).pathname}`, noteCount: text.match(NOTE_SENTENCE)?.length ?? 0 };
+  return { status: response.status, request: `GET ${new URL(path, app).pathname}`, caseId, serverId: serverIdOf(response),
+    noteCount: text.match(NOTE_SENTENCE)?.length ?? 0 };
 }
 
-// 결과를 그 결과를 만든 요청과 짝지어 적습니다: 실제로 보낸 방식·경로와 받은 HTTP 상태만 씁니다.
-const sentObserved = result => `${result.request} → HTTP ${result.status}`;
+// 결과를 그 결과를 만든 요청과 짝지어 적습니다: 실제로 보낸 방식·경로, 받은 HTTP 상태, 사례 식별자, 서버 요청 ID.
+const sentObserved = result => `${result.request} → HTTP ${result.status} · 사례 ${result.caseId} · 서버 ${result.serverId}`;
 
-async function anonymousRequest(app, path, { method = 'GET', authorization } = {}) {
+async function anonymousRequest(app, path, { method = 'GET', authorization, attackId } = {}) {
   if (!SAFE_METHODS.has(method)) return { notRun: true };
+  const caseId = caseIdOf(attackId);
   const response = await fetch(new URL(path, app), {
     method,
     headers: {
+      ...caseHeaders(caseId),
       ...(authorization ? { Authorization: authorization } : {}),
       ...(method === 'POST' || method === 'PUT' ? { 'Content-Type': 'application/json' } : {}),
     },
@@ -42,7 +54,7 @@ async function anonymousRequest(app, path, { method = 'GET', authorization } = {
     redirect: 'error', signal: AbortSignal.timeout(10000),
   });
   const text = await response.text();
-  return { status: response.status, request: `${method} ${new URL(path, app).pathname}`, noteCount: text.match(NOTE_SENTENCE)?.length ?? 0,
+  return { status: response.status, request: `${method} ${new URL(path, app).pathname}`, caseId, serverId: serverIdOf(response), noteCount: text.match(NOTE_SENTENCE)?.length ?? 0,
     returnedNotes: /"(?:notes|title|body)"/u.test(text) };
 }
 
@@ -72,21 +84,22 @@ async function originalApiChecks(config) {
       results.push({ attackId, expected: `anon 키로 원본 자료 API에 직접 ${method} 요청하면 권한 없음으로 거부됨`, observed: NOT_RUN_UNSAFE });
       continue;
     }
+    const caseId = caseIdOf(attackId);
     const response = await fetch(original, {
       method,
-      headers: { apikey: anonKey, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { ...caseHeaders(caseId), apikey: anonKey, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
       body: method === 'POST' ? JSON.stringify({ title: '점검', body: '점검' }) : undefined,
       redirect: 'error', signal: AbortSignal.timeout(10000),
     });
     await response.text();
     results.push({ attackId, expected: `anon 키로 원본 자료 API에 직접 ${method} 요청하면 권한 없음으로 거부됨`,
-      observed: sentObserved({ request: `${method} ${original.pathname}`, status: response.status }) });
+      observed: sentObserved({ request: `${method} ${original.pathname}`, status: response.status, caseId, serverId: serverIdOf(response) }) });
   }
   return results;
 }
 
 async function loginChecks(app, step, config) {
-  const staticFile = await anonymousGet(app, '/data.json');
+  const staticFile = await anonymousGet(app, '/data.json', 'anonymous_static_note_read');
   const probes = [
     ['anonymous_list_read', 'GET', '/api/notes', undefined],
     ['anonymous_note_create', 'POST', '/api/notes', undefined],
@@ -98,7 +111,7 @@ async function loginChecks(app, step, config) {
   const results = [{ attackId: 'anonymous_static_note_read', expected: '비로그인 /data.json 요청에서 가상 메모가 보이지 않음',
     observed: sentObserved(staticFile) }];
   for (const [attackId, method, path, authorization] of probes) {
-    const result = await anonymousRequest(app, path, { method, authorization });
+    const result = await anonymousRequest(app, path, { method, authorization, attackId });
     const who = authorization ? '가짜 토큰' : '무로그인';
     results.push({ attackId, expected: `${who} ${method} ${path.replace(PROBE_ID, ':id')} 요청이 자료 없이 401로 거부됨`,
       observed: result.notRun ? NOT_RUN_UNSAFE : sentObserved(result) });
@@ -107,19 +120,19 @@ async function loginChecks(app, step, config) {
   results.push({ attackId: 'normal_a_note_crud', expected: 'A 로그인 뒤 메모 추가·수정·삭제가 되고 지운 뒤 GET은 404',
     observed: 'not_run: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. 화면에서 직접 확인' });
   if (step >= 12) {
-    const ops = await anonymousRequest(app, '/api/ops/summary');
+    const ops = await anonymousRequest(app, '/api/ops/summary', { attackId: 'anonymous_ops_summary' });
     results.push({ attackId: 'anonymous_ops_summary', expected: '무로그인 GET /api/ops/summary 요청이 401로 거부됨',
       observed: sentObserved(ops) });
   }
   if (step >= 11) {
-    const status = await anonymousRequest(app, '/api/device/status');
+    const status = await anonymousRequest(app, '/api/device/status', { attackId: 'anonymous_device_status' });
     results.push({ attackId: 'anonymous_device_status', expected: '무로그인 GET /api/device/status 요청이 401로 거부됨',
       observed: sentObserved(status) });
     results.push({ attackId: 'device_gate_before_approval', expected: '승인 전 기기는 자료 없이 403이고 서버가 승인한 기기만 기존 자료실이 열림',
       observed: 'not_run: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. A·B 로그인 창에서 직접 확인' });
   }
   if (step >= 10) {
-    const restore = await anonymousRequest(app, '/api/restore/note', { method: 'POST' });
+    const restore = await anonymousRequest(app, '/api/restore/note', { method: 'POST', attackId: 'anonymous_note_restore' });
     results.push({ attackId: 'anonymous_note_restore', expected: '무로그인 POST /api/restore/note 요청이 자료 없이 401로 거부됨',
       observed: restore.notRun ? NOT_RUN_UNSAFE : sentObserved(restore) });
     results.push({ attackId: 'owner_note_restore', expected: 'B가 대상 메모 한 건을 복원하면 ID·소유자·내용 해시가 사본과 같고 A의 요청은 404',
@@ -131,7 +144,7 @@ async function loginChecks(app, step, config) {
   }
   if (step >= 8) {
     for (const [attackId, method, path] of [['instructor_zone_direct_read', 'GET', '/api/instructor'], ['notice_zone_direct_write', 'POST', '/api/notices']]) {
-      const result = await anonymousRequest(app, path, { method });
+      const result = await anonymousRequest(app, path, { method, attackId });
       results.push({ attackId, expected: `무로그인 ${method} ${path} 직접 요청에서 자료가 나오지 않음`,
         observed: result.notRun ? NOT_RUN_UNSAFE : sentObserved(result) });
     }
