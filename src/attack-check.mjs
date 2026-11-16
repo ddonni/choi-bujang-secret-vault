@@ -24,6 +24,8 @@ function appUrl(config) {
 const caseIdOf = attackId => attackId ?? null;
 const caseHeaders = caseId => (caseId ? { 'X-Request-Id': caseId } : {});
 const serverIdOf = response => response.headers.get('x-vercel-id') ?? response.headers.get('sb-request-id') ?? '없음';
+// 서버가 응답의 X-Request-Id로 같은 사례 ID를 돌려줄 때만 그 요청이 서버 기록에 연결됐다고 봅니다.
+const linkedOf = (response, caseId) => Boolean(caseId) && response.headers.get('x-request-id') === caseId;
 
 // 요청이 연결 실패·시간 초과로 HTTP 응답을 받지 못하면 상태를 지어내지 않고 실패로 표시합니다.
 const failedRequest = (request, error) => ({ failed: true, request, reason: error?.name ?? 'Error' });
@@ -42,15 +44,17 @@ async function anonymousGet(app, path, attackId) {
   } catch (error) {
     return failedRequest(request, error);
   }
-  return { status: response.status, request, caseId, serverId: serverIdOf(response),
+  return { status: response.status, request, caseId, linked: linkedOf(response, caseId), serverId: serverIdOf(response),
     noteCount: text.match(NOTE_SENTENCE)?.length ?? 0 };
 }
 
 // 보낸 요청의 결과는 실제로 보낸 방식·경로와 받은 HTTP 상태만 적습니다. 실행마다 바뀌는 값은 넣지 않습니다.
-// HTTP 응답을 받지 못한 요청은 미실행으로 적습니다.
-const sentObserved = result => (result.failed
-  ? `not_run: ${result.request} 요청에 HTTP 응답을 받지 못함(${result.reason})`
-  : `${result.request} → HTTP ${result.status}`);
+// HTTP 응답을 받지 못했거나 사례 ID가 서버 기록에 연결됐는지 확인되지 않은 요청은 상태를 적지 않고 미실행으로 둡니다.
+const sentObserved = result => {
+  if (result.failed) return `not_run: ${result.request} 요청에 HTTP 응답을 받지 못함(${result.reason})`;
+  if (!result.linked) return `not_run: ${result.request} 요청의 사례 ID ${result.caseId}가 서버 기록에 연결됐는지 응답에서 확인되지 않음`;
+  return `${result.request} → HTTP ${result.status}`;
+};
 // 보내지 않은 요청은 어떤 요청을 보내지 않았는지 적고 미실행으로 둡니다.
 const notRunOf = (method, path) => `not_run: ${method} ${path} 요청을 보내지 않음(제출 점검은 쓰기 요청을 보내지 않음)`;
 
@@ -75,7 +79,7 @@ async function anonymousRequest(app, path, { method = 'GET', authorization, atta
   } catch (error) {
     return failedRequest(request, error);
   }
-  return { status: response.status, request, caseId, serverId: serverIdOf(response), noteCount: text.match(NOTE_SENTENCE)?.length ?? 0,
+  return { status: response.status, request, caseId, linked: linkedOf(response, caseId), serverId: serverIdOf(response), noteCount: text.match(NOTE_SENTENCE)?.length ?? 0,
     returnedNotes: /"(?:notes|title|body)"/u.test(text) };
 }
 
@@ -116,7 +120,7 @@ async function originalApiChecks(config) {
         redirect: 'error', signal: AbortSignal.timeout(10000),
       });
       await response.text();
-      result = { request, status: response.status };
+      result = { request, status: response.status, caseId, linked: linkedOf(response, caseId) };
     } catch (error) {
       result = failedRequest(request, error);
     }
