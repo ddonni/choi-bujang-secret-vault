@@ -331,16 +331,16 @@
 
 ### 기기 승인
 
-승인 결과는 `src/device-approval.mjs`의 `resolveDeviceStatus` 하나로 정하고, 메모 접근과 상태 표시가 같은 결과를 씁니다. Vercel 환경변수 `ENGINE_DEVICE_STATUS_URL`과 `ENGINE_DEVICE_STATUS_KEY`가 있으면 ALEPH SDP 엔진의 결과만 쓰고(`deviceRegistered`가 정확히 `true`일 때만 승인, 실패하면 거부), 없으면 아래의 자료실 서버 자체 기록을 씁니다. 엔진 조회 계약이 저장소에 없어 엔진 요청·응답 모양은 가정이며, 지금 배포에는 엔진 환경변수가 없어 자체 기록으로 동작합니다. 응답의 `source`(`engine`·`local`)와 화면 문구로 출처를 구분합니다.
+자료실 서버의 기기 등록 기록입니다. 반 엔진의 기기 판정과는 별개입니다.
 
 | 경로 | 동작 |
 | --- | --- |
 | `GET /api/device/status` | 로그인한 사용자의 이 기기 상태(`none`·`pending`·`approved`·`revoked`) |
-| `POST /api/device/request` | 자체 기록일 때 승인 요청만 기록합니다. 권한을 주지 않으며, 엔진을 쓸 때는 아무것도 기록하지 않습니다. |
+| `POST /api/device/request` | 승인 요청만 기록합니다. 권한을 주지 않습니다. |
 
 - 기기 식별값은 서버가 만든 임의값을 HttpOnly 쿠키 `vault_device`에만 두고, DB 표 `device_approvals`에는 해시만 저장합니다. 브라우저 저장소에는 넣지 않습니다.
 - 서버 함수에는 표의 조회·추가 권한만 있습니다. 승인은 SQL Editor에서 `status`를 `approved`로 바꿀 때만 됩니다.
-- 학생 로그인은 승인 결과가 `approved`일 때만 자료를 받습니다(상태 `none`·`pending`·`revoked`·`unknown`은 거부). 그 밖에는 자료 없이 `403 DEVICE_NOT_APPROVED`입니다. 심판 토큰은 서명이 검증된 별도 경로라 이 검사를 거치지 않습니다.
+- 학생 로그인은 이 사용자·이 기기의 기록이 `approved`일 때만 자료를 받습니다. 그 밖에는 자료 없이 `403 DEVICE_NOT_APPROVED`입니다. 심판 토큰은 서명이 검증된 별도 경로라 이 검사를 거치지 않습니다.
 - 다시 실행하기: `supabase/device-approvals.sql`을 실행하고, 로그인해 **이 기기 승인 요청**을 누른 뒤, 화면의 요청 번호를 파일 끝의 `update`로 승인하고 **승인 상태 다시 확인**을 누릅니다.
 - 코딩 도구의 시험은 가짜 Supabase로 한 것입니다. 실제 A·B 계정의 승인 전 차단과 승인 뒤 화면은 미실행입니다.
 
@@ -349,91 +349,6 @@
 - 쿠키 기반 기록이라 쿠키를 지우면 새 기기로 보입니다. 하드웨어를 증명하지 않으며, 반 엔진의 기기 승인을 대신하지 않습니다.
 - 승인은 SQL Editor에서만 할 수 있어 대기 요청을 사람이 직접 확인해야 합니다.
 - 아이콘은 SVG 하나뿐이라 브라우저에 따라 설치 안내가 나오지 않을 수 있습니다.
-
-## 12단계: 탈환 작전실과 운영 안내
-
-이 안내의 기준은 실측표와 연습 명령으로 검사한 커밋 `66d6287`입니다. 그 뒤에 바뀐 내용은 다시 검사해야 합니다.
-
-### 출처 구분
-
-| 구분 | 내용 | 파일 |
-| --- | --- | --- |
-| 제공 엔진 | **ALEPH SDP 엔진**(운영 측 제공). 신원·기기·경로를 확인하고 `decide(request)`를 부르며, 사건 전달과 접속 회수를 맡습니다. 엔진 코드와 주소는 이 저장소에 없고, 요청·응답 계약만 문서로 받았습니다. | `docs/DECIDER_REQUEST.md`, `docs/DETECT_EVENTS.md` |
-| 운영 측 시작 틀 | 빌드·제출 묶음·연습 시험 도구, 로그인 검사기, 수업용 경보 | `scripts/bundle.mjs`, `scripts/decider-test.mjs`, `scripts/detect-test.mjs`, `scripts/fixture-7.mjs`, `scripts/xdr-run.mjs`, `src/verify-login.mjs`, `test/`, `package/`, `xdr/fixtures/`, `api/ai.js`, `api/threat-intel.js` |
-| 학생 몫 | 판정기 규칙, 탐지 규칙, 자료실 서버 함수와 화면, 설치형 웹앱, DB SQL, 정책 사본·복구·실측 도구, 보너스 판정기 | `src/decider.mjs`, `src/detect.mjs`, `src/notes-api.mjs`, `src/auth-session.mjs`, `src/device-approval.mjs`, `src/resource-ids.mjs`, `src/attack-check.mjs`, `api/auth/`, `api/notes*`, `api/device/`, `api/restore/`, `api/ops/`, `public/`, `supabase/*.sql`, `scripts/policy-baseline.mjs`, `scripts/evidence-table.mjs`, `policy-baseline/`, `xdr/brute-force/`, `xdr/web-injection/` |
-
-학생이 고친 시작 틀 파일은 `scripts/build-public.mjs`, `scripts/deployment-identity.mjs`, `src/attack-check.mjs`, `src/decider.mjs`, `src/detect.mjs`, `public/index.html`, `vercel.json`, `aleph.config.json`, `.gitignore`, `data.json`입니다. `/api/ai`와 `/api/threat-intel`은 시작 틀 그대로 `501`입니다.
-
-### 비밀값 처리
-
-- 저장소와 제출 묶음에는 비밀값이 없습니다. 값은 Vercel 대시보드 → **Settings → Environment Variables**에만 넣습니다.
-- Vercel 환경변수: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`(서버 전용). 반 엔진 조회 주소를 받으면 `ENGINE_DEVICE_STATUS_URL`, `ENGINE_DEVICE_STATUS_KEY`(이름만 정해 둠, 응답 형식은 가정)를 추가합니다.
-- Git에 올리지 않는 파일: `bundle-notes.json`, `artifacts/`(제출 묶음·실측표·시험 사본·감사 이력), `supabase/notes.sql`(가상 메모 문장 포함).
-- 실측표의 계정 값(`EVIDENCE_*`)과 공개 키는 실행하는 터미널에만 넣고, 끝나면 창을 닫습니다.
-
-### 자료실
-
-1. **설치:** Node.js 22 이상에서 `git clone` 뒤 `npm install`을 실행합니다. Supabase SQL Editor에서 순서대로 실행합니다.
-   - 2단계 `supabase/notes.sql`(로컬 전용)
-   - 3단계 `supabase/notes-step3.sql`
-   - 4·5단계 소유자 연결 SQL(이메일이 들어가 저장소에 없음)과 `supabase/db-access-policy.sql`의 권한 정책
-   - 10단계 `supabase/restore-backup.sql`
-   - 11단계 `supabase/device-approvals.sql`
-
-   Vercel 새 프로젝트에 이 저장소를 연결하고 위 환경변수를 넣습니다. 저장소는 Public이어야 심판이 설정을 읽습니다.
-2. **실행:** `main`에 push하면 Vercel이 배포합니다. 로컬에서는 `npm run build -- --local`로 화면만 확인할 수 있으며 서버 함수는 돌지 않습니다.
-3. **중지:** 공개 접근을 멈추려면 Vercel → **Settings → Deployment Protection**을 켭니다. 자료까지 멈추려면 Supabase 프로젝트를 Pause합니다. 둘 다 학생 화면과 심판 시험도 함께 막습니다.
-4. **복구:** 앞 배포로 돌아가려면 Vercel → **Deployments**에서 정상이던 배포를 다시 Production으로 올리거나, `git revert <커밋>`으로 되돌린 뒤 push합니다. `git reset --hard`는 쓰지 않습니다. Supabase가 멈췄으면 **Restore project**를 누릅니다. 메모 한 건은 10단계 `POST /api/restore/note`로 되살립니다.
-
-### 학생 판정기
-
-1. **설치:** 따로 설치하지 않습니다. `src/decider.mjs`의 `decide(request)`를 ALEPH SDP 엔진이 부릅니다.
-2. **실행(로컬 연습):** `npm run decider:test`, `npm run fixture:7`. 결과는 가상 요청이며 엔진의 실제 판정이 아닙니다.
-3. **중지:** 판정기는 엔진이 부르는 함수라 학생 쪽에서 중지하지 않습니다. 엔진 연결 해제는 운영 측이 합니다.
-4. **복구:** `node scripts/policy-baseline.mjs verify`로 사본을 검증하고, `drill`과 `restore`로 시험 사본에서 복원을 연습합니다. 운영 판정기를 되돌릴 때는 `git revert`를 씁니다.
-
-### 탐지 규칙
-
-1. **설치:** 따로 설치하지 않습니다. 9단계 `src/detect.mjs`, 보너스 `xdr/brute-force/`, `xdr/web-injection/`입니다.
-2. **실행(로컬 연습):** `npm run detect:test`, `npm run xdr:run -- brute-force`, `npm run xdr:run -- web-injection`. 거부 후보와 알림은 `node xdr/<항목>/respond.mjs`로 만듭니다.
-3. **중지:** 로컬 명령이라 실행을 멈추면 끝납니다. 엔진의 사건 전달과 회수 집행은 이 저장소에 연결되지 않았습니다.
-4. **복구:** 결과 파일은 같은 명령을 다시 실행하면 새로 만들어집니다. 규칙 파일은 `git revert`로 되돌립니다.
-
-### 접속 앱(설치형 웹앱)
-
-1. **설치:** 배포 주소를 브라우저에서 열고 주소창의 설치 표시나 메뉴의 **앱 설치**를 누릅니다. 따로 설치하는 접속 프로그램은 없습니다. 설치는 기기 승인과 관계없습니다.
-2. **실행:** 설치된 앱이나 브라우저로 엽니다. 로그인한 뒤 **이 기기 승인 요청**을 누르고, SQL Editor에서 승인되면 자료실과 탈환 작전실이 열립니다.
-3. **중지:** 앱을 제거하거나 F12 → **Application → Service workers → Unregister**를 누릅니다. 기기 승인을 거두려면 SQL Editor에서 그 요청을 `revoked`로 바꿉니다.
-4. **복구:** 다시 열면 서비스 워커가 새로 등록됩니다. 쿠키를 지웠다면 새 기기로 보이므로 다시 승인받습니다.
-
-### 탈환 작전실
-
-승인된 기기에서 로그인한 본인 기록만 보여 줍니다. `GET /api/ops/summary`가 근거를 구분해 돌려줍니다.
-
-| 항목 | 근거 |
-| --- | --- |
-| 판정기 판정 | 미실행(엔진의 판정 기록 연결 없음). 규칙 이름은 수치 없이 표시 |
-| 탐지 사건, 접속 회수 | 미실행(엔진 연결 없음) |
-| 내 기기 기록, 복원 감사 기록 | 실제 API의 DB 조회, ID·해시는 앞자리만 |
-| 복구 버전 | 요청 때마다 사본 해시를 다시 검증 |
-
-메모 표는 읽지 않습니다. 화면은 받은 가린 기록의 건수를 다시 세어 수치와 맞는지 표시합니다.
-
-### 재현 순서
-
-1. 위 「자료실」 설치와 Vercel 배포를 마칩니다.
-2. `npm install`, `npm run decider:test`, `npm run fixture:7`, `npm run detect:test`, `node scripts/policy-baseline.mjs verify`를 실행합니다.
-3. A·B로 로그인해 기기 승인을 받습니다.
-4. 실측표를 만듭니다: `node scripts/evidence-table.mjs`(A·B 시험은 `EVIDENCE_*` 환경변수가 있을 때만 실행).
-   12단계 저장점의 `npm run bundle` 자기 점검에서는 학생 계정이 필요한 미실행 네 항목을 `student_account_flows` 하나로 묶습니다(점검 상한 20개).
-5. `npm run bundle`로 제출 묶음을 만듭니다(원본 API 점검은 `SUPABASE_PUBLISHABLE_KEY`가 있을 때만 실행).
-
-`66d6287` 검사 결과: 실측표 32건 중 통과 20 · 실패 0 · 미실행 12(A·B 계정 8건, 엔진 3건, 심판 1건). 가상 시험은 `decider:test` 4개, `detect:test` 6개, `fixture:7`이 통과했습니다. 이 결과는 학생의 자기 점검이며 심판 판정이 아닙니다.
-
-### 12단계 남은 약점
-
-- ALEPH SDP 엔진과의 실제 연결(기기 승인 결과 조회, 사건 전달, 회수 집행, 다시 로그인)은 계약을 받지 못해 미실행입니다. 기기 승인은 엔진이 설정되지 않으면 자료실 서버의 자체 기록을 씁니다.
-- A·B 계정의 정상 요청 실측과 41종 시험 목록 대조는 아직 하지 않았습니다.
 
 ## 보너스 xdr-01: 무차별 로그인 공격을 잡아 냅니다
 
