@@ -1,5 +1,6 @@
 // GET /api/ops/summary. 탈환 작전실 요약입니다. 로그인·기기 승인을 거친 본인의 기록만 돌려줍니다.
-// evidence는 근거를 뜻합니다: code(배포된 코드), api(이번 요청의 DB 조회·해시 검증), not_run(미실행), unavailable(조회 실패).
+// evidence는 근거를 뜻합니다: api(이번 요청의 DB 조회·해시 검증), not_run(미실행), unavailable(조회 실패).
+// 실제로 측정하지 않은 값은 수치로 만들지 않습니다.
 // 메모 표는 읽지 않습니다. 사용자 번호, 기기 해시, 토큰, 메모 내용은 응답에 넣지 않고 ID와 해시는 앞자리만 보여 줍니다.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -60,7 +61,8 @@ export default async function handler(request, response) {
       'result', row => ({ at: row.at, noteId: mask(row.note_id), result: row.result, contentHash: row.content_sha256?.slice(0, 12) ?? null })),
   ]);
   response.status(200).json({
-    rules: { evidence: 'code', total: RULE_IDS.length, names: RULE_IDS },
+    // 판정기의 실제 판정 기록은 엔진에 있고 연결되지 않아 미실행입니다. 규칙 이름은 수치가 아닌 배포 설정입니다.
+    rules: { evidence: 'not_run', decisions: null, names: RULE_IDS, reason: '운영 반 엔진의 판정 기록이 연결되지 않았습니다.' },
     detection: { evidence: 'not_run', rule: 'burst_read', events: null, reason: '운영 반 엔진의 사건 전달이 연결되지 않았습니다.' },
     revocation: { evidence: 'not_run', revoked: null, reason: '운영 반 엔진의 회수 집행 경로가 연결되지 않았습니다.' },
     devices,

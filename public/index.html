@@ -309,7 +309,7 @@
       }
       const { rules, detection, revocation, devices, recovery, restores } = data;
       opsBody.replaceChildren(
-        opsSection(`판정기 규칙 ${rules.total}개`, rules.evidence, [rules.names.join(', ')]),
+        opsSection('판정기 판정', rules.evidence, [`판정 건수 없음. ${rules.reason}`, `배포된 규칙 이름(판정 기록 아님): ${rules.names.join(', ')}`]),
         opsSection('탐지 사건', detection.evidence, [`규칙 ${detection.rule}: 건수 없음. ${detection.reason}`]),
         opsSection('접속 회수', revocation.evidence, [`회수 건수 없음. ${revocation.reason}`]),
         opsSection('내 기기 기록', devices.evidence, [countText(devices.counts), matchText(devices), ...devices.records.map(record => `${record.id} · ${record.status} · ${record.requestedAt}`)]),
