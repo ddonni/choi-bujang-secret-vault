@@ -1,5 +1,6 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
+import http from 'node:http';
 
 const NOTE_SENTENCE = /실습용 가상 (?:과제|포트폴리오|리추얼|행정) 기록/gu;
 // 제출 점검은 격리 환경에서 돌기 때문에 GET·HEAD가 아닌 요청은 보내지 않고 미실행으로 기록합니다.
@@ -206,6 +207,9 @@ export async function runAttackChecks(config) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   const app = appUrl(config);
+  // Node의 fetch는 기본으로 HTTPS_PROXY·HTTP_PROXY를 따르지 않습니다. 실행 환경이 프록시를 정해 두었다면
+  // 점검 요청이 그 프록시를 거쳐 실제로 전송·기록되게 합니다. 프록시 변수가 없으면 지금처럼 직접 연결합니다.
+  if (typeof http.setGlobalProxyFromEnv === 'function') http.setGlobalProxyFromEnv();
   if (typeof config.sampleMarker !== 'string' || !config.sampleMarker) throw new Error('가상 메모의 확인 표시를 넣어 주세요.');
   if (config.step === 1) {
     const response = await fetch(new URL('/data.json', app), {
