@@ -97,6 +97,11 @@ async function loginChecks(app, step, config) {
   // 정상 A 요청에는 학생 계정의 로그인이 필요해 이 자동 점검에서 보내지 않습니다.
   results.push({ attackId: 'normal_a_note_crud', expected: 'A 로그인 뒤 메모 추가·수정·삭제가 되고 지운 뒤 GET은 404',
     observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. 화면에서 직접 확인' });
+  if (step >= 12) {
+    const ops = await anonymousRequest(app, '/api/ops/summary');
+    results.push({ attackId: 'anonymous_ops_summary', expected: '무로그인 GET /api/ops/summary 요청이 401로 거부됨',
+      observed: `무로그인 GET /api/ops/summary 요청: HTTP ${ops.status}, 자료 ${ops.returnedNotes ? '포함' : '없음'}` });
+  }
   if (step >= 11) {
     const status = await anonymousRequest(app, '/api/device/status');
     results.push({ attackId: 'anonymous_device_status', expected: '무로그인 GET /api/device/status 요청이 401로 거부됨',
@@ -135,11 +140,19 @@ async function loginChecks(app, step, config) {
     results.push({ attackId: 'b_reads_a_note', expected: 'B 로그인으로 A 메모 GET·PUT·DELETE /api/notes/:id 요청이 404로 거부되고 A 메모는 그대로',
       observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. B 로그인 창에서 직접 확인' });
   }
+  // 12단계부터 점검 상한(20개) 때문에, 사유가 같은 학생 계정 미실행 항목을 하나로 묶습니다. 미실행은 그대로입니다.
+  if (step >= 12) {
+    const accountIds = ['normal_a_note_crud', 'device_gate_before_approval', 'owner_note_restore', 'b_reads_a_note'];
+    const kept = results.filter(item => !accountIds.includes(item.attackId));
+    kept.push({ attackId: 'student_account_flows', expected: 'A 메모 추가·수정·삭제, B의 A 메모 요청 404, 승인 전 기기 403, B 복원 200·A 복원 404',
+      observed: '미실행: 자동 점검은 학생 계정 비밀번호를 쓰지 않음. node scripts/evidence-table.mjs에 EVIDENCE_* 환경변수를 넣어 학생이 직접 실측' });
+    return kept;
+  }
   return results;
 }
 
 export async function runAttackChecks(config) {
-  if (!Number.isInteger(config.step) || config.step < 1 || config.step > 11) {
+  if (!Number.isInteger(config.step) || config.step < 1 || config.step > 12) {
     throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   }
   const app = appUrl(config);
